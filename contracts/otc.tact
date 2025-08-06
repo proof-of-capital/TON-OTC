@@ -29,7 +29,13 @@ contract OTC {
     priceToRefund: Int as coins = 0;
     minInputAmount: Int as coins = 0;
     outputMinAmount: Int as coins = 0;
+    lockWithdraw: Int as uint64 = 0;
     state: Int as uint8 = STATE_REPLISHMENT_OF_FUNDS;
+    withdrawData: FarmWithdrawData?;
+    proposedAt: Int? as uint64;
+    withdrawDataIsAceept: Bool?;
+
+
 
     init(id: Int, inputMasterToken: Address?, outputMasterToken: Address, admin: Address, client: Address, supplies: map<Int as uint8, Supply>, priceToRefund: Int as coins, outputMinAmount: Int as coins, minInputAmount: Int as coins) {
         require(admin == sender(), "Only admin can initialize the contract");
@@ -184,6 +190,74 @@ contract OTC {
         });
     }
 
+    receive("withdraw-ton") {
+        let ctx = context();
+        nativeReserve(0, 0);
+        require(ctx.sender == self.client, "Only client can withdraw TON");
+        require(self.lockWithdraw < now(), "Withdraw is locked");
+        require(self.tonBalance > 0, "No TON balance to withdraw");
+        
+        self.state = STATE_CANCELLED;
+        self.tonBalance = 0;
+        
+        send(SendParameters{
+            to: self.client,
+            value: 0,
+            mode: SendRemainingBalance,
+            bounce: false,
+        });
+    }
+
+    receive(msg: WithdrawInput) {
+        let ctx: Context = context();
+        nativeReserve(MIN_OTC_BALANCE + self.tonBalance, 0);
+        require(ctx.sender == self.client, "Only client can withdraw TON");
+        require(self.lockWithdraw < now(), "Withdraw is locked");
+        self.state = STATE_CANCELLED;
+
+        self.tonBalance = 0;
+        
+        send(SendParameters{
+            to: self.inputWalletAddress!!,
+            value: 0,
+            mode: SendRemainingBalance,
+            bounce: false,
+            body: TokenTransfer {
+                    query_id: msg.queryId,
+                    amount:  msg.amount,
+                    recipient: self.client,
+                    forward_ton_amount: 0,
+                    forward_payload: emptySlice(),
+                }.toCell(),
+        });
+    }
+
+    receive(msg: WithdrawOutput) {
+        let ctx: Context = context();
+        nativeReserve(MIN_OTC_BALANCE + self.tonBalance, 0);
+        require(ctx.sender == self.client, "Only client can withdraw TON");
+        require(self.lockWithdraw < now(), "Withdraw is locked");
+        self.state = STATE_CANCELLED;
+
+        self.tonBalance = 0;
+        
+        send(SendParameters{
+            to: self.outputWalletAddress,
+            value: 0,
+            mode: SendRemainingBalance,
+            bounce: false,
+            body: TokenTransfer {
+                    query_id: msg.queryId,
+                    amount:  msg.amount,
+                    recipient: self.client,
+                    forward_ton_amount: 0,
+                    forward_payload: emptySlice(),
+                }.toCell(),
+        });
+    }
+
+
+
     receive(msg: TokenNotification) {
         let ctx = context();
         if (ctx.sender == self.inputWalletAddress!!) {
@@ -211,6 +285,54 @@ contract OTC {
             
         }
     }
+
+    receive(msg: ProposeFarmAccount) {
+        require(sender() == self.admin, "Only admin");
+        nativeReserve(MIN_OTC_BALANCE + self.tonBalance, 0);
+        self.withdrawData = msg.withdrawData;
+        self.proposedAt = now();
+
+        send(SendParameters{
+            to: self.admin,
+            value: 0,
+            mode: SendRemainingBalance|SendIgnoreErrors,
+            bounce: false,
+        });
+    }
+
+    receive("yes") {
+        let ctx = context();
+        require(ctx.sender == self.client, "Only client can call");
+        self.withdrawDataIsAceept = true;
+    }
+
+    receive("no") {
+        let ctx = context();
+        require(ctx.sender == self.client, "Only client can call");
+        self.withdrawDataIsAceept = false;
+    }
+
+    receive(msg: Send) {
+        require(sender() == self.admin, "Only admin");
+        nativeReserve(MIN_OTC_BALANCE + self.tonBalance, 0);
+        require(self.withdrawDataIsAceept!!== true, "Withdraw is not accepted");
+
+        send(SendParameters{
+            to: self.outputWalletAddress,
+            value: 0,
+            mode: SendRemainingBalance|SendIgnoreErrors,
+            bounce: false,
+            body: TokenTransfer {
+                query_id: msg.queryId,
+                amount: self.outputMinAmount,
+                recipient: self.withdrawData!!.farmAccount,
+                forward_ton_amount: msg.forwardTonAmount,
+                forward_payload:  self.withdrawData!!.sendData.asSlice(),
+            }.toCell(),        
+        });
+    }
+
+
 
     fun handleSupplyProcess(msg: TokenNotification) {
         let curentSupply = self.supplies.get(self.indexSupply)!!;
