@@ -1,0 +1,25 @@
+const MIN_OTC_BALANCE: Int = ton("0.05");
+const TAKE_WALLET_ADDRESS_AMOUNT: Int = ton("0.01");
+const DEPOSIT_FEE: Int = ton("0.01");
+const MIN_CHECK_AMOUNT: Int = ton("0.1");
+const FORWARD_TRANSACTION_VALUE: Int = ton("0.05");
+
+
+
+
+const ZERO_ADDRESS: Address = address("UQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAJKZ");
+
+const NOMINATOR: Int = ton("1");
+
+const NANO: Int = NOMINATOR;
+
+const STATE_REPLISHMENT_OF_FUNDS: Int = 0;
+const STATE_SUPPLY_OF_FUNDS: Int = 1;
+const STATE_WAITTING_FOR_CLIENT_ANSWER: Int = 2;
+const STATE_CHECK_OUTPUT: Int = 3;
+const STATE_DEPOSIT_TON: Int = 4;
+const STATE_DEPOSIT_INPUT: Int = 6;
+const STATE_DEPOSIT_OUTPUT: Int = 5;
+const STATE_WITHDRAW_TON: Int = 6;
+const STATE_WITHDRAW_INPUT: Int = 7;
+const STATE_WITHDRAW_OUTPUT: Int = 8;
