@@ -6,8 +6,18 @@
       "path": "contracts/otc.tact",
       "output": "build/OTC",
       "options": {
-        "debug": false,
+        "debug": true,
         "external": false
+      },
+      "mode": "full"
+    },
+    {
+      "name": "MyJetton",
+      "path": "contracts/jetton/my_jetton.tact",
+      "output": "build/MyJetton",
+      "options": {
+          "debug": false,
+          "external": false
       },
       "mode": "full"
     }

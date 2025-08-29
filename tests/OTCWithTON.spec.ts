@@ -12,17 +12,15 @@ const STATE_WAITTING_FOR_CLIENT_ANSWER: number = 2;
 const STATE_CANCELLED: number = 3;
 const STATE_DEPOSIT_TON: number = 4;
 
-
 const SUPPLY_LOCK_PERIOD = 10*24*60*60;
 
-describe('OTC', () => {
+describe('OTC with TON instead of supply token', () => {
     let blockchain: Blockchain;
     let deployer: SandboxContract<TreasuryContract>;
     let client: SandboxContract<TreasuryContract>;
     let poc: SandboxContract<TreasuryContract>;
     let otc: SandboxContract<OTC>;
     let launchJetton: SandboxContract<MyJetton>;
-    let supplyJetton: SandboxContract<MyJetton>;
     let supplyDictionary: Dictionary<number, Supply> = Dictionary.empty();
     const ZERO_ADDRESS = Address.parse('UQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAJKZ');
 
@@ -30,18 +28,18 @@ describe('OTC', () => {
     const OTC_ID = 1n;
     const PRICE_TO_REFUND = toNano('0.1'); // 0.1 TON for refund
     const OUTPUT_MIN_AMOUNT = toNano('100'); // Minimum output amount
-    const MIN_INPUT_AMOUNT = toNano('0'); // Minimum input amount
+    const MIN_INPUT_AMOUNT = toNano('50'); // Minimum input amount in TON
 
     const FIRST_SUPPLY: Supply = {
         $$type: 'Supply',
-        input: 10000000000000000000000000n,
-        output: 100000000000000000000000000n,
+        input: toNano('50'), // 50 TON input
+        output: 100000000000000000000000000n, // 100 launch tokens output
     };
 
     const SECOND_SUPPLY: Supply = {
         $$type: 'Supply',
-        input: 20000000000000000000000000n,
-        output: 200000000000000000000000000n,
+        input: toNano('100'), // 100 TON input
+        output: 200000000000000000000000000n, // 200 launch tokens output
     };
 
     beforeEach(async () => {
@@ -51,6 +49,7 @@ describe('OTC', () => {
         client = await blockchain.treasury('client');
         poc = await blockchain.treasury('poc');
 
+        // Create launch jetton (output token)
         launchJetton = blockchain.openContract(
             await MyJetton.fromInit(deployer.address, beginCell().endCell(), 109999990000000000000000000000000n),
         );
@@ -62,7 +61,7 @@ describe('OTC', () => {
             },
             {
                 $$type: 'Mint',
-                amount: FIRST_SUPPLY.output + SECOND_SUPPLY.output, // Mint 100 tokens
+                amount: FIRST_SUPPLY.output + SECOND_SUPPLY.output,
                 receiver: deployer.address,
             },
         );
@@ -70,53 +69,25 @@ describe('OTC', () => {
         await verifyTransactions(mintResult.transactions, deployer.address);
         blockchain.now = mintResult.transactions[1].now + 1000;
 
-        supplyJetton = blockchain.openContract(
-            await MyJetton.fromInit(deployer.address, beginCell().endCell(), 10000000000000000000000000000n),
-        );
-
-        const mintResult2 = await supplyJetton.send(
-            deployer.getSender(),
-            {
-                value: toNano('0.1'),
-            },
-            {
-                $$type: 'Mint',
-                amount: FIRST_SUPPLY.input + SECOND_SUPPLY.input, // Mint 100 tokens
-                receiver: client.address,
-            },
-        );
-        await verifyTransactions(mintResult2.transactions, deployer.address);
-
+        // Set up supplies dictionary
         supplyDictionary.set(0, FIRST_SUPPLY);
         supplyDictionary.set(1, SECOND_SUPPLY);
 
+        // Create OTC contract with ZERO_ADDRESS as inputMasterToken (TON)
         otc = blockchain.openContract(
             await OTC.fromInit(
                 OTC_ID,
-                supplyJetton.address,
+                ZERO_ADDRESS, // TON instead of supply token
                 launchJetton.address,
                 deployer.address,
                 client.address,
                 supplyDictionary,
                 PRICE_TO_REFUND,
                 FIRST_SUPPLY.output + SECOND_SUPPLY.output,
-                FIRST_SUPPLY.input + SECOND_SUPPLY.input,
+                MIN_INPUT_AMOUNT,
                 true,
             ),
         );
-
-
-        // await supplyJetton.send(
-        //     deployer.getSender(),
-        //     {
-        //         value: toNano('0.1'),
-        //     },
-        //     {
-        //         $$type: 'Mint',
-        //         amount: 1n, // Mint 100 tokens
-        //         receiver: otc.address,
-        //     },
-        // );
 
         const deployResult = await otc.send(
             deployer.getSender(),
@@ -135,44 +106,48 @@ describe('OTC', () => {
         await verifyTransactions(deployResult.transactions, deployer.address);
     });
 
-    it('should successfully deposit output token', async () => {
-        const supplyWallet = blockchain.openContract(
-            await JettonDefaultWallet.fromInit(client.address, supplyJetton.address),
-        );
-
-        const launchJettonWallet = blockchain.openContract(
-            await JettonDefaultWallet.fromInit(deployer.address, launchJetton.address),
-        );
-        const sendResult = await supplyWallet.send(
+    it('should successfully deposit TON and transition to supply state', async () => {
+        // Client deposits TON to OTC contract
+        const depositResult = await otc.send(
             client.getSender(),
             {
-                value: toNano('0.1'),
+                value: FIRST_SUPPLY.input + SECOND_SUPPLY.input + toNano('0.1'), // Send 150 TON
             },
             {
-                $$type: 'TokenTransfer',
+                $$type: 'DepositTon',
                 amount: FIRST_SUPPLY.input + SECOND_SUPPLY.input,
-                recipient: otc.address,
-                forward_ton_amount: 0n,
-                forward_payload: beginCell().endCell().asSlice(),
-                query_id: 0n,
-                response_destination: deployer.address,
-                custom_payload: beginCell().endCell(),
             },
         );
-        await verifyTransactions(sendResult.transactions, deployer.address);
 
-        const checkInput = await otc.send(
+        await verifyTransactions(depositResult.transactions, client.address);
+
+        // Check that state changed to SUPPLY_OF_FUNDS
+        let state = await otc.getCurrentState();
+        expect(state.toString()).toBe(STATE_SUPPLY_OF_FUNDS.toString());
+    });
+
+    it('should successfully complete full OTC cycle with TON', async () => {
+        // Step 1: Client deposits TON
+        const depositResult = await otc.send(
             client.getSender(),
             {
-                value: toNano('0.3'),
+                value: FIRST_SUPPLY.input + SECOND_SUPPLY.input + toNano('0.1'),
             },
-            "check-input",
+            {
+                $$type: 'DepositTon',
+                amount: FIRST_SUPPLY.input + SECOND_SUPPLY.input,
+            },
         );
+
+        await verifyTransactions(depositResult.transactions, client.address);
 
         let state = await otc.getCurrentState();
         expect(state.toString()).toBe(STATE_SUPPLY_OF_FUNDS.toString());
 
-        await verifyTransactions(checkInput.transactions, client.address);
+        // Step 2: Deployer supplies launch tokens
+        const launchJettonWallet = blockchain.openContract(
+            await JettonDefaultWallet.fromInit(deployer.address, launchJetton.address),
+        );
 
         const launchJettonSupplyResult = await launchJettonWallet.send(
             deployer.getSender(),
@@ -192,7 +167,6 @@ describe('OTC', () => {
         );
         await verifyTransactions(launchJettonSupplyResult.transactions, deployer.address);
 
-        
         const launchJettonSupplyResult2 = await launchJettonWallet.send(
             deployer.getSender(),
             {
@@ -210,10 +184,12 @@ describe('OTC', () => {
             },
         );
         await verifyTransactions(launchJettonSupplyResult2.transactions, deployer.address);
+
+        // Check state transition to waiting for client answer
         state = await otc.getCurrentState();
         expect(state.toString()).toBe(STATE_WAITTING_FOR_CLIENT_ANSWER.toString());
 
-
+        // Step 3: Propose farm account
         const proposeFarmAccountResult = await otc.send(
             deployer.getSender(),
             {
@@ -231,6 +207,7 @@ describe('OTC', () => {
         );
         await verifyTransactions(proposeFarmAccountResult.transactions, client.address);
 
+        // Step 4: Client votes yes
         const sendResultVote = await otc.send(
             client.getSender(),
             {
@@ -240,6 +217,7 @@ describe('OTC', () => {
         );
         await verifyTransactions(sendResultVote.transactions, poc.address);
 
+        // Step 5: Send tokens to farm
         const sendResultSend = await otc.send(
             deployer.getSender(),
             {
@@ -253,54 +231,81 @@ describe('OTC', () => {
         );
         await verifyTransactions(sendResultSend.transactions, poc.address);
 
+        // Verify farm received the tokens
         const pocJettonWallet = blockchain.openContract(
             await JettonDefaultWallet.fromInit(poc.address, launchJetton.address),
         );
 
         const {balance: pocBalance} = await pocJettonWallet.getGetWalletData();
-        expect(pocBalance.toString()).toBe((FIRST_SUPPLY.output+SECOND_SUPPLY.output).toString());
-
-
+        expect(pocBalance.toString()).toBe((FIRST_SUPPLY.output + SECOND_SUPPLY.output).toString());
     });
 
-    it('should successfully deposit output token', async () => {
-        const supplyWallet = blockchain.openContract(
-            await JettonDefaultWallet.fromInit(client.address, supplyJetton.address),
-        );
-
-        const launchJettonWallet = blockchain.openContract(
-            await JettonDefaultWallet.fromInit(deployer.address, launchJetton.address),
-        );
-        const sendResult = await supplyWallet.send(
+    it('should allow client to withdraw TON after lock period expires', async () => {
+        // Step 1: Client deposits TON
+        const depositResult = await otc.send(
             client.getSender(),
             {
-                value: toNano('0.1'),
+                value: FIRST_SUPPLY.input + SECOND_SUPPLY.input + toNano('0.1'),
             },
             {
-                $$type: 'TokenTransfer',
+                $$type: 'DepositTon',
                 amount: FIRST_SUPPLY.input + SECOND_SUPPLY.input,
-                recipient: otc.address,
-                forward_ton_amount: 0n,
-                forward_payload: beginCell().endCell().asSlice(),
-                query_id: 0n,
-                response_destination: deployer.address,
-                custom_payload: beginCell().endCell(),
             },
         );
-        await verifyTransactions(sendResult.transactions, deployer.address);
 
-        const checkInput = await otc.send(
-            client.getSender(),
-            {
-                value: toNano('0.3'),
-            },
-            "check-input",
-        );
+        await verifyTransactions(depositResult.transactions, client.address);
 
         let state = await otc.getCurrentState();
         expect(state.toString()).toBe(STATE_SUPPLY_OF_FUNDS.toString());
 
-        await verifyTransactions(checkInput.transactions, client.address);
+        // Step 2: Deployer supplies launch tokens
+        const launchJettonWallet = blockchain.openContract(
+            await JettonDefaultWallet.fromInit(deployer.address, launchJetton.address),
+        );
+
+
+
+        // Step 3: Wait for lock period to expire and withdraw TON
+        blockchain.now! += Number(SUPPLY_LOCK_PERIOD) + 1;
+
+        const clientBalanceBefore = await client.getBalance();
+        
+        const withdrawInput = await otc.send(
+            client.getSender(),
+            {
+                value: toNano('0.2'),
+            },
+            "withdraw-ton",
+        );
+        await verifyTransactions(withdrawInput.transactions, client.address);
+
+        // Verify client received the TON back
+        const clientBalanceAfter = await client.getBalance();
+        expect(Number(clientBalanceAfter)).toBeGreaterThan(Number(clientBalanceBefore));
+    });
+
+    it('should allow client to withdraw launch tokens after lock period expires', async () => {
+        // Step 1: Client deposits TON
+        const depositResult = await otc.send(
+            client.getSender(),
+            {
+                value: FIRST_SUPPLY.input + SECOND_SUPPLY.input + toNano('0.1'),
+            },
+            {
+                $$type: 'DepositTon',
+                amount: FIRST_SUPPLY.input + SECOND_SUPPLY.input,
+            },
+        );
+
+        await verifyTransactions(depositResult.transactions, client.address);
+
+        let state = await otc.getCurrentState();
+        expect(state.toString()).toBe(STATE_SUPPLY_OF_FUNDS.toString());
+
+        // Step 2: Deployer supplies launch tokens
+        const launchJettonWallet = blockchain.openContract(
+            await JettonDefaultWallet.fromInit(deployer.address, launchJetton.address),
+        );
 
         const launchJettonSupplyResult = await launchJettonWallet.send(
             deployer.getSender(),
@@ -320,7 +325,6 @@ describe('OTC', () => {
         );
         await verifyTransactions(launchJettonSupplyResult.transactions, deployer.address);
 
-        
         const launchJettonSupplyResult2 = await launchJettonWallet.send(
             deployer.getSender(),
             {
@@ -338,12 +342,14 @@ describe('OTC', () => {
             },
         );
         await verifyTransactions(launchJettonSupplyResult2.transactions, deployer.address);
+
         state = await otc.getCurrentState();
         expect(state.toString()).toBe(STATE_WAITTING_FOR_CLIENT_ANSWER.toString());
 
-
-        blockchain.now! += Number(TOTAL_LOCK_PERIOD)+1;
-        const withdrawInput = await otc.send(
+        // Step 3: Wait for lock period to expire and withdraw output tokens
+        blockchain.now! += Number(TOTAL_LOCK_PERIOD) + 1;
+        
+        const withdrawOutput = await otc.send(
             client.getSender(),
             {
                 value: toNano('0.2'),
@@ -354,78 +360,51 @@ describe('OTC', () => {
                 amount: FIRST_SUPPLY.output + SECOND_SUPPLY.output,
             },
         );
-        await verifyTransactions(withdrawInput.transactions, client.address);
+        await verifyTransactions(withdrawOutput.transactions, client.address);
+
+        // Verify client received the launch tokens
         const clientJettonWallet = blockchain.openContract(
             await JettonDefaultWallet.fromInit(client.address, launchJetton.address),
         );
-        const {balance: inputBalance} = await clientJettonWallet.getGetWalletData();
-        expect(inputBalance.toString()).toBe((FIRST_SUPPLY.output + SECOND_SUPPLY.output).toString());
-
-
+        
+        const {balance: clientBalance} = await clientJettonWallet.getGetWalletData();
+        expect(clientBalance.toString()).toBe((FIRST_SUPPLY.output + SECOND_SUPPLY.output).toString());
     });
 
-
-
-    it('should successfully withdraw input token', async () => {
-        const supplyWallet = blockchain.openContract(
-            await JettonDefaultWallet.fromInit(client.address, supplyJetton.address),
-        );
-
-        const launchJettonWallet = blockchain.openContract(
-            await JettonDefaultWallet.fromInit(deployer.address, launchJetton.address),
-        );
-        const sendResult = await supplyWallet.send(
+    it('should allow client to withdraw TON using withdraw-ton message', async () => {
+        // Step 1: Client deposits TON
+        const depositResult = await otc.send(
             client.getSender(),
             {
-                value: toNano('0.1'),
+                value: FIRST_SUPPLY.input + SECOND_SUPPLY.input + toNano('0.1'),
             },
             {
-                $$type: 'TokenTransfer',
+                $$type: 'DepositTon',
                 amount: FIRST_SUPPLY.input + SECOND_SUPPLY.input,
-                recipient: otc.address,
-                forward_ton_amount: 0n,
-                forward_payload: beginCell().endCell().asSlice(),
-                query_id: 0n,
-                response_destination: deployer.address,
-                custom_payload: beginCell().endCell(),
             },
         );
-        await verifyTransactions(sendResult.transactions, deployer.address);
 
-        const checkInput = await otc.send(
-            client.getSender(),
-            {
-                value: toNano('0.3'),
-            },
-            "check-input",
-        );
+        await verifyTransactions(depositResult.transactions, client.address);
 
         let state = await otc.getCurrentState();
         expect(state.toString()).toBe(STATE_SUPPLY_OF_FUNDS.toString());
 
-        await verifyTransactions(checkInput.transactions, client.address);
-        
-        blockchain.now! += SUPPLY_LOCK_PERIOD+1;
+        // Step 2: Wait for supply lock period to expire
+        blockchain.now! += SUPPLY_LOCK_PERIOD + 1;
 
-        const checkOutput = await otc.send(
+        // Step 3: Client withdraws TON using withdraw-ton message
+        const withdrawTonResult = await otc.send(
             client.getSender(),
             {
-                value: toNano('0.2'),
+                value: toNano('0.1'),
             },
-            {
-                $$type: 'WithdrawInput',
-                queryId: 0n,
-                amount: FIRST_SUPPLY.input + SECOND_SUPPLY.input,
-            },
-        );
-        await verifyTransactions(checkOutput.transactions, client.address);
-
-        const clientJettonWallet = blockchain.openContract(
-            await JettonDefaultWallet.fromInit(client.address, supplyJetton.address),
+            "withdraw-ton",
         );
 
-        const {balance: inputBalance} = await clientJettonWallet.getGetWalletData();
-        const InputAmount = FIRST_SUPPLY.input + SECOND_SUPPLY.input;
-        expect(inputBalance.toString()).toBe(InputAmount.toString());
+        await verifyTransactions(withdrawTonResult.transactions, client.address);
+
+        // Verify client received the TON back
+        const clientBalance = await client.getBalance();
+        expect(clientBalance).toBeGreaterThan(0n);
     });
 });
