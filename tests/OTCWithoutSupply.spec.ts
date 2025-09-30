@@ -130,7 +130,7 @@ describe('OTC without supply', () => {
         expect((Number(await otc.getTotalLockEndTime()))).toBe(0); // Should be set during deployment
 
         // Test buyback price getter
-        expect(await otc.getBuybackPriceValue()).toBe(PRICE_TO_REFUND); // Should be set to refund price initially
+        expect(await otc.getBuybackPrice()).toBe(PRICE_TO_REFUND); // Should be set to refund price initially
 
         // Test state getter
         expect((await otc.getCurrentState()).toString()).toBe('0'); // Initial state (STATE_FUNDING)

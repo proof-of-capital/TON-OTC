@@ -26,19 +26,18 @@ contract OTC {
     supplies: map<Int as uint8, Supply>;
     supplyCount: Int as uint8 = 0;
     indexSupply: Int as uint8 = 0;
-    priceToRefund: Int as coins = 0;
+    buybackPrice: Int as coins;
     minInputAmount: Int as coins = 0;
     outputMinAmount: Int as coins = 0;
     supplyLockEnd: Int as uint64 = 0;
     totalLockEnd: Int as uint64 = 0;
     isSupply: Bool;
-    buybackPrice: Int as coins;       
     state: Int as uint8 = STATE_FUNDING;
     withdrawData: FarmWithdrawData?;
     proposedAt: Int? as uint64;
     withdrawDataIsAccepted: Bool?;
 
-    init(id: Int, inputMasterToken: Address, outputMasterToken: Address, admin: Address, client: Address, supplies: map<Int as uint8, Supply>, priceToRefund: Int as coins, outputMinAmount: Int as coins, minInputAmount: Int as coins, isSupply: Bool) {
+    init(id: Int, inputMasterToken: Address, outputMasterToken: Address, admin: Address, client: Address, supplies: map<Int as uint8, Supply>, buybackPrice: Int as coins, outputMinAmount: Int as coins, minInputAmount: Int as coins, isSupply: Bool) {
         require(admin == sender(), "Only admin can initialize the contract");
         self.id = id;
         self.inputMasterToken = inputMasterToken;
@@ -46,7 +45,7 @@ contract OTC {
         self.admin = admin;
         self.client = client;
         self.supplies = supplies;
-        self.priceToRefund = priceToRefund;
+        self.buybackPrice = buybackPrice;
         self.outputMinAmount = outputMinAmount;
         self.minInputAmount = minInputAmount;
         self.isSupply = isSupply;
@@ -61,7 +60,6 @@ contract OTC {
         require(inputSum >= minInputAmount || self.isSupply, "Input sum must be greater than min input amount");
         require(self.supplyCount > 0 && self.isSupply || !self.isSupply && self.supplyCount == 0, "Supply count must be greater than 0 if input master token is not null or equal to zero if input master token is null");
 
-        self.buybackPrice = priceToRefund;
 
         if (inputMasterToken != ZERO_ADDRESS) {
             send(SendParameters{
@@ -493,7 +491,7 @@ contract OTC {
 
     // Getter for price to refund
     get fun refundPrice(): Int {
-        return self.priceToRefund;
+        return self.buybackPrice;
     }
 
     // Getter for minimum input amount
@@ -517,7 +515,7 @@ contract OTC {
     }
 
     // Getter for buyback price
-    get fun buybackPriceValue(): Int {
+    get fun buybackPrice(): Int {
         return self.buybackPrice;
     }
 
