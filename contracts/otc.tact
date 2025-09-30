@@ -271,8 +271,6 @@ contract OTC {
                     self.state = STATE_SUPPLY_IN_PROGRESS;
                     self.inputTokenBalance += msg.amount;
                     self.supplyLockEnd = now() + SUPPLY_LOCK_PERIOD;
-                } else {
-                    self.inputTokenBalance += msg.amount;
                 }
             } else if (msg.from == self.admin) {
                 require(self.proposedAt!! + PROPOSE_FARM_ACCOUNT_LOCK_PERIOD < now() && self.withdrawDataIsAccepted == null || self.withdrawDataIsAccepted != null && self.withdrawDataIsAccepted == false, "Propose farm account lock is active");
@@ -301,13 +299,10 @@ contract OTC {
                     self.state = STATE_SUPPLY_PROVIDED;
                     self.outputTokenBalance += msg.amount;
                     self.totalLockEnd = now() + TOTAL_LOCK_PERIOD;
-                } else {
-                    self.outputTokenBalance += msg.amount;
                 }
             } else  if (msg.from == self.admin) {
                 self.handleSupplyProcess(msg);
             }
-            
         }
     }
 
