@@ -93,8 +93,10 @@ contract OTC {
         require(context.sender == self.inputMasterToken || context.sender == self.outputMasterToken, "Only input master token or output master token can take wallet address");
         nativeReserve(MIN_OTC_BALANCE + self.tonBalance, 0);
         if (context.sender == self.inputMasterToken) {
+            require(self.inputWalletAddress == ZERO_ADDRESS, "Input wallet address already set");
             self.inputWalletAddress = msg.wallet_address;
         } else {
+            require(self.outputWalletAddress == ZERO_ADDRESS, "Output wallet address already set");
             self.outputWalletAddress = msg.wallet_address;
         }
         send(SendParameters{
