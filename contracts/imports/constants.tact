@@ -9,13 +9,12 @@ const PROPOSE_FARM_ACCOUNT_LOCK_PERIOD: Int = 10*24*60*60; // 10 DAYS
 const SUPPLY_LOCK_PERIOD: Int = 10*24*60*60; // 10 days for supply phase (USDT/TON only)
 const WITHDRAW_LOCK_PERIOD: Int = 10*24*60*60; // 10 days for withdraw after proposing farm address
 const TOTAL_LOCK_PERIOD: Int = 120*24*60*60; // 4 months total lock
-const LOCK: Int = 40*24*60*60; // 10 DAYS (deprecated, use specific constants)
+const INITIAL_LOCK_PERIOD: Int = 120*24*60*60; // 4 months initial lock
 
 const ZERO_ADDRESS: Address = address("UQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAJKZ");
 
 const NOMINATOR: Int = ton("1");
 
-const NANO: Int = NOMINATOR;
 
 const STATE_FUNDING: Int = 0; // (was STATE_REPLISHMENT_OF_FUNDS)
 const STATE_SUPPLY_IN_PROGRESS: Int = 1; // (was STATE_SUPPLY_OF_FUNDS)
