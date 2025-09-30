@@ -121,6 +121,7 @@ contract OTC {
 
     receive("deposit-ton") {
         require(self.inputMasterToken==ZERO_ADDRESS, "Input token is jetton");
+        require(self.state == STATE_FUNDING, "State must be replenishment of funds");
         let ctx = context();
         self.tonBalance += ctx.value - DEPOSIT_FEE;
         if (self.tonBalance >= self.minInputAmount) {
@@ -179,6 +180,7 @@ contract OTC {
 
     receive(msg: DepositTon) {
         let ctx = context();
+        require(self.state == STATE_FUNDING, "State must be replenishment of funds");
         require(self.inputMasterToken==ZERO_ADDRESS, "Input token is jetton");
         self.tonBalance += msg.amount;
         if (self.tonBalance >= self.minInputAmount) {
@@ -273,6 +275,7 @@ contract OTC {
                     self.supplyLockEnd = now() + SUPPLY_LOCK_PERIOD;
                 }
             } else if (msg.from == self.admin) {
+                require(self.state == STATE_WAITTING_FOR_CLIENT_ANSWER || self.state == STATE_CLIENT_REJECTED, "State must be waiting for client answer or client rejected");
                 require(self.proposedAt!! + PROPOSE_FARM_ACCOUNT_LOCK_PERIOD < now() && self.withdrawDataIsAccepted == null || self.withdrawDataIsAccepted != null && self.withdrawDataIsAccepted == false, "Propose farm account lock is active");
                 let outputAmount = msg.amount * NOMINATOR / self.buybackPrice;
                 self.state = STATE_CANCELED;
