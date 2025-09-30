@@ -36,7 +36,7 @@ contract OTC {
     state: Int as uint8 = STATE_FUNDING;
     withdrawData: FarmWithdrawData?;
     proposedAt: Int? as uint64;
-    withdrawDataIsAceept: Bool?;
+    withdrawDataIsAccepted: Bool?;
 
     init(id: Int, inputMasterToken: Address, outputMasterToken: Address, admin: Address, client: Address, supplies: map<Int as uint8, Supply>, priceToRefund: Int as coins, outputMinAmount: Int as coins, minInputAmount: Int as coins, isSupply: Bool) {
         require(admin == sender(), "Only admin can initialize the contract");
@@ -275,7 +275,7 @@ contract OTC {
                     self.inputTokenBalance += msg.amount;
                 }
             } else if (msg.from == self.admin) {
-                require(self.proposedAt!! + PROPOSE_FARM_ACCOUNT_LOCK_PERIOD < now() && self.withdrawDataIsAceept == null || self.withdrawDataIsAceept != null && self.withdrawDataIsAceept == false, "Propose farm account lock is active");
+                require(self.proposedAt!! + PROPOSE_FARM_ACCOUNT_LOCK_PERIOD < now() && self.withdrawDataIsAccepted == null || self.withdrawDataIsAccepted != null && self.withdrawDataIsAccepted == false, "Propose farm account lock is active");
                 let outputAmount = msg.amount * NOMINATOR / self.buybackPrice;
                 self.state = STATE_CANCELED;
                 require(outputAmount <= self.outputTokenBalance, "Not enough output token for buyback");
@@ -331,7 +331,7 @@ contract OTC {
         let ctx = context();
         require(ctx.sender == self.client, "Only client can call");
         require(self.state == STATE_WAITTING_FOR_CLIENT_ANSWER || self.state == STATE_CLIENT_ACCEPTED || self.state == STATE_CLIENT_REJECTED, "State must allow client voting");
-        self.withdrawDataIsAceept = true;
+        self.withdrawDataIsAccepted = true;
         self.state = STATE_CLIENT_ACCEPTED;
     }
 
@@ -339,7 +339,7 @@ contract OTC {
         let ctx = context();
         require(ctx.sender == self.client, "Only client can call");
         require(self.state == STATE_WAITTING_FOR_CLIENT_ANSWER || self.state == STATE_CLIENT_ACCEPTED || self.state == STATE_CLIENT_REJECTED, "State must allow client voting");
-        self.withdrawDataIsAceept = false;
+        self.withdrawDataIsAccepted = false;
         self.state = STATE_CLIENT_REJECTED;
     }
 
@@ -347,7 +347,7 @@ contract OTC {
         require(sender() == self.admin, "Only admin");
         nativeReserve(MIN_OTC_BALANCE + self.tonBalance, 0);
         require(self.state == STATE_CLIENT_ACCEPTED, "Client must have accepted the proposal");
-        require(self.withdrawDataIsAceept!!== true, "Withdraw is not accepted");
+        require(self.withdrawDataIsAccepted!!== true, "Withdraw is not accepted");
 
         send(SendParameters{
             to: self.outputWalletAddress,
@@ -369,7 +369,7 @@ contract OTC {
         require(ctx.sender == self.admin, "Only admin can buyback");
         require(self.inputMasterToken == ZERO_ADDRESS, "Buyback only for TON inputs");
 
-        require(self.proposedAt!! + PROPOSE_FARM_ACCOUNT_LOCK_PERIOD < now() && self.withdrawDataIsAceept==null || self.withdrawDataIsAceept!=null && self.withdrawDataIsAceept == false, "Propose farm account lock is active");
+        require(self.proposedAt!! + PROPOSE_FARM_ACCOUNT_LOCK_PERIOD < now() && self.withdrawDataIsAccepted==null || self.withdrawDataIsAccepted!=null && self.withdrawDataIsAccepted == false, "Propose farm account lock is active");
 
 
         let outputAmount = ctx.value * NOMINATOR / self.buybackPrice;
@@ -400,8 +400,8 @@ contract OTC {
     }
 
     inline fun handleSupplyProcess(msg: TokenNotification) {
-        let curentSupply: Supply = self.supplies.get(self.indexSupply)!!;
-        require(curentSupply.output  <= msg.amount, "Amount must be greater than supply output");
+        let currentSupply: Supply = self.supplies.get(self.indexSupply)!!;
+        require(currentSupply.output  <= msg.amount, "Amount must be greater than supply output");
         require(self.state == STATE_SUPPLY_IN_PROGRESS, "State must be supply of funds");
 
         self.indexSupply += 1;
@@ -411,7 +411,7 @@ contract OTC {
         }
 
         if (self.inputMasterToken == ZERO_ADDRESS) {
-            self.tonBalance -= curentSupply.input;
+            self.tonBalance -= currentSupply.input;
             nativeReserve(MIN_OTC_BALANCE + self.tonBalance, 0);
             send(SendParameters{
                 to: self.admin,
@@ -420,7 +420,7 @@ contract OTC {
                 bounce: false,
             });
         } else {
-            self.inputTokenBalance -= curentSupply.input;
+            self.inputTokenBalance -= currentSupply.input;
             nativeReserve(MIN_OTC_BALANCE + self.tonBalance, 0);
             send(SendParameters{
                 to: self.inputWalletAddress,
@@ -429,7 +429,7 @@ contract OTC {
                 bounce: false,
                 body: TokenTransfer {
                     query_id: self.id,
-                    amount: curentSupply.input,
+                    amount: currentSupply.input,
                     recipient: self.admin,
                     forward_ton_amount: 0,
                     forward_payload: emptySlice(),
@@ -538,7 +538,7 @@ contract OTC {
 
     // Getter for withdraw acceptance status
     get fun withdrawAccepted(): Bool? {
-        return self.withdrawDataIsAceept;
+        return self.withdrawDataIsAccepted;
     }
 
     // Getter for contract ID
