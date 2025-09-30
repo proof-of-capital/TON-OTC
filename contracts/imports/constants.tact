@@ -17,8 +17,10 @@ const NOMINATOR: Int = ton("1");
 
 const NANO: Int = NOMINATOR;
 
-const STATE_REPLISHMENT_OF_FUNDS: Int = 0;
-const STATE_SUPPLY_OF_FUNDS: Int = 1;
-const STATE_WAITTING_FOR_CLIENT_ANSWER: Int = 2;
-const STATE_CANCELLED: Int = 3;
-const STATE_DEPOSIT_TON: Int = 4;
+const STATE_FUNDING: Int = 0; // (was STATE_REPLISHMENT_OF_FUNDS)
+const STATE_SUPPLY_IN_PROGRESS: Int = 1; // (was STATE_SUPPLY_OF_FUNDS)
+const STATE_SUPPLY_PROVIDED: Int = 2; // supply completed, both checks passed
+const STATE_WAITTING_FOR_CLIENT_ANSWER: Int = 3; // used AFTER propose
+const STATE_CLIENT_ACCEPTED: Int = 4; // client answered "yes"
+const STATE_CLIENT_REJECTED: Int = 5; // client answered "no"
+const STATE_CANCELED: Int = 6; // final cancellation

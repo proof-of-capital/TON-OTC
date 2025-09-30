@@ -33,7 +33,7 @@ contract OTC {
     totalLockEnd: Int as uint64 = 0;
     isSupply: Bool;
     buybackPrice: Int as coins;       
-    state: Int as uint8 = STATE_REPLISHMENT_OF_FUNDS;
+    state: Int as uint8 = STATE_FUNDING;
     withdrawData: FarmWithdrawData?;
     proposedAt: Int? as uint64;
     withdrawDataIsAceept: Bool?;
@@ -124,7 +124,7 @@ contract OTC {
         let ctx = context();
         self.tonBalance += ctx.value - DEPOSIT_FEE;
         if (self.tonBalance >= self.minInputAmount) {
-            self.state = STATE_SUPPLY_OF_FUNDS;
+            self.state = STATE_SUPPLY_IN_PROGRESS;
             self.supplyLockEnd = now() + SUPPLY_LOCK_PERIOD;
         }
     }
@@ -136,7 +136,7 @@ contract OTC {
         require(ctx.sender == self.client, "Only client can check input");
         
         require(ctx.value >= MIN_CHECK_AMOUNT, "Value must be greater than min check input amount");
-        require(self.state == STATE_REPLISHMENT_OF_FUNDS, "State must be replenishment of funds");
+        require(self.state == STATE_FUNDING, "State must be replenishment of funds");
         self.inputTokenBalance = 0;
         send(SendParameters{
             to: self.inputWalletAddress,
@@ -160,7 +160,7 @@ contract OTC {
         require(ctx.sender == self.client, "Only client can check input");
         
         require(ctx.value >= MIN_CHECK_AMOUNT, "Value must be greater than min check input amount");
-        require(self.state == STATE_REPLISHMENT_OF_FUNDS, "State must be replenishment of funds");
+        require(self.state == STATE_FUNDING, "State must be replenishment of funds");
         self.outputTokenBalance = 0;
         send(SendParameters{
             to: self.outputWalletAddress,
@@ -182,7 +182,7 @@ contract OTC {
         require(self.inputMasterToken==ZERO_ADDRESS, "Input token is jetton");
         self.tonBalance += msg.amount;
         if (self.tonBalance >= self.minInputAmount) {
-            self.state = STATE_SUPPLY_OF_FUNDS;
+            self.state = STATE_SUPPLY_IN_PROGRESS;
             self.supplyLockEnd = now() + SUPPLY_LOCK_PERIOD;
         }
         nativeReserve(MIN_OTC_BALANCE + self.tonBalance, 0);
@@ -239,7 +239,7 @@ contract OTC {
         require(ctx.sender == self.client, "Only client can withdraw TON");
         require(self.totalLockEnd < now(), "Total lock is active");
         require(self.supplyLockEnd < now(), "Supply lock is active");
-        self.state = STATE_CANCELLED;
+        self.state = STATE_CANCELED;
 
         self.tonBalance = 0;
         nativeReserve(MIN_OTC_BALANCE + self.tonBalance, 0);
@@ -268,7 +268,7 @@ contract OTC {
             if (msg.from == myAddress()) { 
                 let opcode: Int = msg.forward_payload.loadUint(32);
                 if(opcode == CHECK_INPUT_MESSAGE_ID) {
-                    self.state = STATE_SUPPLY_OF_FUNDS;
+                    self.state = STATE_SUPPLY_IN_PROGRESS;
                     self.inputTokenBalance += msg.amount;
                     self.supplyLockEnd = now() + SUPPLY_LOCK_PERIOD;
                 } else {
@@ -277,7 +277,7 @@ contract OTC {
             } else if (msg.from == self.admin) {
                 require(self.proposedAt!! + PROPOSE_FARM_ACCOUNT_LOCK_PERIOD < now() && self.withdrawDataIsAceept == null || self.withdrawDataIsAceept != null && self.withdrawDataIsAceept == false, "Propose farm account lock is active");
                 let outputAmount = msg.amount * NOMINATOR / self.buybackPrice;
-                self.state = STATE_CANCELLED;
+                self.state = STATE_CANCELED;
                 require(outputAmount <= self.outputTokenBalance, "Not enough output token for buyback");
                 self.outputTokenBalance -= outputAmount;
                 send(SendParameters{
@@ -298,7 +298,7 @@ contract OTC {
             if (msg.from == myAddress()) { 
                 let opcode: Int = msg.forward_payload.loadUint(32);
                 if(opcode == CHECK_OUTPUT_MESSAGE_ID) {
-                    self.state = STATE_WAITTING_FOR_CLIENT_ANSWER;
+                    self.state = STATE_SUPPLY_PROVIDED;
                     self.outputTokenBalance += msg.amount;
                     self.totalLockEnd = now() + TOTAL_LOCK_PERIOD;
                 } else {
@@ -313,10 +313,11 @@ contract OTC {
 
     receive(msg: ProposeFarmAccount) {
         require(sender() == self.admin, "Only admin");
-        require(self.state == STATE_WAITTING_FOR_CLIENT_ANSWER, "State must be waiting for client answer");
+        require(self.state == STATE_SUPPLY_PROVIDED, "State must be supply provided");
         nativeReserve(MIN_OTC_BALANCE + self.tonBalance, 0);
         self.withdrawData = msg.withdrawData;
         self.proposedAt = now();
+        self.state = STATE_WAITTING_FOR_CLIENT_ANSWER;
 
         send(SendParameters{
             to: self.admin,
@@ -329,18 +330,23 @@ contract OTC {
     receive("yes") {
         let ctx = context();
         require(ctx.sender == self.client, "Only client can call");
+        require(self.state == STATE_WAITTING_FOR_CLIENT_ANSWER || self.state == STATE_CLIENT_ACCEPTED || self.state == STATE_CLIENT_REJECTED, "State must allow client voting");
         self.withdrawDataIsAceept = true;
+        self.state = STATE_CLIENT_ACCEPTED;
     }
 
     receive("no") {
         let ctx = context();
         require(ctx.sender == self.client, "Only client can call");
+        require(self.state == STATE_WAITTING_FOR_CLIENT_ANSWER || self.state == STATE_CLIENT_ACCEPTED || self.state == STATE_CLIENT_REJECTED, "State must allow client voting");
         self.withdrawDataIsAceept = false;
+        self.state = STATE_CLIENT_REJECTED;
     }
 
     receive(msg: Send) {
         require(sender() == self.admin, "Only admin");
         nativeReserve(MIN_OTC_BALANCE + self.tonBalance, 0);
+        require(self.state == STATE_CLIENT_ACCEPTED, "Client must have accepted the proposal");
         require(self.withdrawDataIsAceept!!== true, "Withdraw is not accepted");
 
         send(SendParameters{
@@ -368,7 +374,7 @@ contract OTC {
 
         let outputAmount = ctx.value * NOMINATOR / self.buybackPrice;
         require(outputAmount <= self.outputTokenBalance, "Not enough POK for buyback");
-        self.state = STATE_CANCELLED;
+        self.state = STATE_CANCELED;
         self.outputTokenBalance -= outputAmount;
         send(SendParameters{
             to: self.inputWalletAddress,
@@ -396,11 +402,11 @@ contract OTC {
     inline fun handleSupplyProcess(msg: TokenNotification) {
         let curentSupply: Supply = self.supplies.get(self.indexSupply)!!;
         require(curentSupply.output  <= msg.amount, "Amount must be greater than supply output");
-        require(self.state == STATE_SUPPLY_OF_FUNDS, "State must be supply of funds");
+        require(self.state == STATE_SUPPLY_IN_PROGRESS, "State must be supply of funds");
 
         self.indexSupply += 1;
         if (self.indexSupply == self.supplyCount) {
-            self.state = STATE_WAITTING_FOR_CLIENT_ANSWER;
+            self.state = STATE_SUPPLY_PROVIDED;
             self.totalLockEnd = now() + TOTAL_LOCK_PERIOD;
         }
 

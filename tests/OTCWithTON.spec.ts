@@ -1,16 +1,11 @@
 import { Blockchain, SandboxContract, SendMessageResult, TreasuryContract } from '@ton/sandbox';
 import { Dictionary, Address, toNano, beginCell } from '@ton/core';
-import { OTC, Supply, TOTAL_LOCK_PERIOD } from '../build/OTC/OTC_OTC';
+import { OTC, Supply, TOTAL_LOCK_PERIOD, STATE_FUNDING, STATE_SUPPLY_IN_PROGRESS, STATE_SUPPLY_PROVIDED, STATE_WAITTING_FOR_CLIENT_ANSWER, STATE_CLIENT_ACCEPTED, STATE_CLIENT_REJECTED, STATE_CANCELED } from '../build/OTC/OTC_OTC';
 import '@ton/test-utils';
 import { MyJetton } from '../build/MyJetton/MyJetton_MyJetton';
 import { JettonDefaultWallet } from '../build/MyJetton/MyJetton_JettonDefaultWallet';
 import { verifyTransactions } from './utils/verifyTransactions';
 
-const STATE_REPLISHMENT_OF_FUNDS: number = 0;
-const STATE_SUPPLY_OF_FUNDS: number = 1;
-const STATE_WAITTING_FOR_CLIENT_ANSWER: number = 2;
-const STATE_CANCELLED: number = 3;
-const STATE_DEPOSIT_TON: number = 4;
 
 const SUPPLY_LOCK_PERIOD = 10*24*60*60;
 
@@ -123,7 +118,7 @@ describe('OTC with TON instead of supply token', () => {
 
         // Check that state changed to SUPPLY_OF_FUNDS
         let state = await otc.getCurrentState();
-        expect(state.toString()).toBe(STATE_SUPPLY_OF_FUNDS.toString());
+        expect(state.toString()).toBe(STATE_SUPPLY_IN_PROGRESS.toString());
     });
 
     it('should successfully complete full OTC cycle with TON', async () => {
@@ -142,7 +137,7 @@ describe('OTC with TON instead of supply token', () => {
         await verifyTransactions(depositResult.transactions, client.address);
 
         let state = await otc.getCurrentState();
-        expect(state.toString()).toBe(STATE_SUPPLY_OF_FUNDS.toString());
+        expect(state.toString()).toBe(STATE_SUPPLY_IN_PROGRESS.toString());
 
         // Step 2: Deployer supplies launch tokens
         const launchJettonWallet = blockchain.openContract(
@@ -187,7 +182,7 @@ describe('OTC with TON instead of supply token', () => {
 
         // Check state transition to waiting for client answer
         state = await otc.getCurrentState();
-        expect(state.toString()).toBe(STATE_WAITTING_FOR_CLIENT_ANSWER.toString());
+        expect(state.toString()).toBe(STATE_SUPPLY_PROVIDED.toString());
 
         // Step 3: Propose farm account
         const proposeFarmAccountResult = await otc.send(
@@ -256,7 +251,7 @@ describe('OTC with TON instead of supply token', () => {
         await verifyTransactions(depositResult.transactions, client.address);
 
         let state = await otc.getCurrentState();
-        expect(state.toString()).toBe(STATE_SUPPLY_OF_FUNDS.toString());
+        expect(state.toString()).toBe(STATE_SUPPLY_IN_PROGRESS.toString());
 
         // Step 2: Deployer supplies launch tokens
         const launchJettonWallet = blockchain.openContract(
@@ -300,7 +295,7 @@ describe('OTC with TON instead of supply token', () => {
         await verifyTransactions(depositResult.transactions, client.address);
 
         let state = await otc.getCurrentState();
-        expect(state.toString()).toBe(STATE_SUPPLY_OF_FUNDS.toString());
+        expect(state.toString()).toBe(STATE_SUPPLY_IN_PROGRESS.toString());
 
         // Step 2: Deployer supplies launch tokens
         const launchJettonWallet = blockchain.openContract(
@@ -344,7 +339,7 @@ describe('OTC with TON instead of supply token', () => {
         await verifyTransactions(launchJettonSupplyResult2.transactions, deployer.address);
 
         state = await otc.getCurrentState();
-        expect(state.toString()).toBe(STATE_WAITTING_FOR_CLIENT_ANSWER.toString());
+        expect(state.toString()).toBe(STATE_SUPPLY_PROVIDED.toString());
 
         // Step 3: Wait for lock period to expire and withdraw output tokens
         blockchain.now! += Number(TOTAL_LOCK_PERIOD) + 1;
@@ -387,7 +382,7 @@ describe('OTC with TON instead of supply token', () => {
         await verifyTransactions(depositResult.transactions, client.address);
 
         let state = await otc.getCurrentState();
-        expect(state.toString()).toBe(STATE_SUPPLY_OF_FUNDS.toString());
+        expect(state.toString()).toBe(STATE_SUPPLY_IN_PROGRESS.toString());
 
         // Step 2: Wait for supply lock period to expire
         blockchain.now! += SUPPLY_LOCK_PERIOD + 1;

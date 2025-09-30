@@ -1,6 +1,6 @@
 import { Blockchain, SandboxContract, TreasuryContract } from '@ton/sandbox';
 import { Address, beginCell, Dictionary, toNano } from '@ton/core';
-import { OTC, STATE_WAITTING_FOR_CLIENT_ANSWER, Supply, OTC_errors_backward } from '../build/OTC/OTC_OTC';
+import { OTC, STATE_SUPPLY_PROVIDED, STATE_CLIENT_ACCEPTED, STATE_CLIENT_REJECTED, Supply, OTC_errors_backward } from '../build/OTC/OTC_OTC';
 import '@ton/test-utils';
 import { MyJetton } from '../build/MyJetton/MyJetton_MyJetton';
 import { JettonDefaultWallet } from '../build/MyJetton/MyJetton_JettonDefaultWallet';
@@ -133,7 +133,7 @@ describe('OTC without supply', () => {
         expect(await otc.getBuybackPriceValue()).toBe(PRICE_TO_REFUND); // Should be set to refund price initially
 
         // Test state getter
-        expect((await otc.getCurrentState()).toString()).toBe('0'); // Initial state (STATE_REPLISHMENT_OF_FUNDS)
+        expect((await otc.getCurrentState()).toString()).toBe('0'); // Initial state (STATE_FUNDING)
 
         // Test withdraw data getters
         expect(await otc.getWithdrawDataInfo()).toBe(null); // Should be null initially
@@ -174,7 +174,7 @@ describe('OTC without supply', () => {
         );
         await verifyTransactions(checkOutput.transactions, client.address);
         const state = await otc.getCurrentState();
-        expect(state.toString()).toBe(STATE_WAITTING_FOR_CLIENT_ANSWER.toString());
+        expect(state.toString()).toBe(STATE_SUPPLY_PROVIDED.toString());
     });
 
     it('should successfully buyback output token', async () => {
@@ -208,7 +208,7 @@ describe('OTC without supply', () => {
     
         await verifyTransactions(checkOutput.transactions, client.address);
         const state = await otc.getCurrentState();
-        expect(state.toString()).toBe(STATE_WAITTING_FOR_CLIENT_ANSWER.toString());
+        expect(state.toString()).toBe(STATE_SUPPLY_PROVIDED.toString());
 
         const proposeFarmAccountResult = await otc.send(
             deployer.getSender(),
@@ -295,7 +295,7 @@ describe('OTC without supply', () => {
     
         await verifyTransactions(checkOutput.transactions, client.address);
         const state = await otc.getCurrentState();
-        expect(state.toString()).toBe(STATE_WAITTING_FOR_CLIENT_ANSWER.toString());
+        expect(state.toString()).toBe(STATE_SUPPLY_PROVIDED.toString());
 
         const proposeFarmAccountResult = await otc.send(
             deployer.getSender(),
@@ -364,7 +364,7 @@ describe('OTC without supply', () => {
     
         await verifyTransactions(checkOutput.transactions, client.address);
         const state = await otc.getCurrentState();
-        expect(state.toString()).toBe(STATE_WAITTING_FOR_CLIENT_ANSWER.toString());
+        expect(state.toString()).toBe(STATE_SUPPLY_PROVIDED.toString());
 
         const proposeFarmAccountResult = await otc.send(
             deployer.getSender(),
@@ -433,7 +433,7 @@ describe('OTC without supply', () => {
     
         await verifyTransactions(checkOutput.transactions, client.address);
         const state = await otc.getCurrentState();
-        expect(state.toString()).toBe(STATE_WAITTING_FOR_CLIENT_ANSWER.toString());
+        expect(state.toString()).toBe(STATE_SUPPLY_PROVIDED.toString());
 
         const proposeFarmAccountResult = await otc.send(
             client.getSender(),
@@ -458,6 +458,158 @@ describe('OTC without supply', () => {
             exitCode: OTC_errors_backward["Only admin"],
         });
 
+    });
+
+    it('should allow client to change vote from "no" to "yes"', async () => {
+        const launchJettonWallet = blockchain.openContract(await JettonDefaultWallet.fromInit(deployer.address, launchJetton.address));
+        const sendResult = await launchJettonWallet.send(
+            deployer.getSender(),
+            {
+                value: toNano('0.1'),
+            },
+            {
+                $$type: 'TokenTransfer',
+                query_id: 1n,
+                custom_payload: null,
+                forward_ton_amount: toNano('0'),
+                forward_payload: beginCell().asSlice(),
+                amount: OUTPUT_MIN_AMOUNT,
+                recipient: otc.address,
+                response_destination: deployer.address,
+            },
+        );
+       await verifyTransactions(sendResult.transactions, deployer.address);
+
+        const checkOutput = await otc.send(
+            client.getSender(),
+            {
+                value: toNano('0.2'),
+            },
+            "check-output",
+        );
+    
+        await verifyTransactions(checkOutput.transactions, client.address);
+        const state = await otc.getCurrentState();
+        expect(state.toString()).toBe(STATE_SUPPLY_PROVIDED.toString());
+
+        const proposeFarmAccountResult = await otc.send(
+            deployer.getSender(),
+            {
+                value: toNano('0.3'),
+            },
+            {
+                $$type: 'ProposeFarmAccount',
+                queryId: 0n,
+                withdrawData: {
+                    $$type: 'FarmWithdrawData',
+                    farmAccount: poc.address,
+                    sendData: beginCell().endCell(),
+                },
+            },
+        );
+        await verifyTransactions(proposeFarmAccountResult.transactions, deployer.address);
+
+        // Client votes "no" first
+        const voteNoResult = await otc.send(
+            client.getSender(),
+            {
+                value: toNano('0.3'),
+            },
+            "no",
+        );
+        await verifyTransactions(voteNoResult.transactions, client.address);
+        
+        let currentState = await otc.getCurrentState();
+        expect(currentState.toString()).toBe(STATE_CLIENT_REJECTED.toString());
+
+        // Client changes vote to "yes"
+        const voteYesResult = await otc.send(
+            client.getSender(),
+            {
+                value: toNano('0.3'),
+            },
+            "yes",
+        );
+        await verifyTransactions(voteYesResult.transactions, client.address);
+        
+        currentState = await otc.getCurrentState();
+        expect(currentState.toString()).toBe(STATE_CLIENT_ACCEPTED.toString());
+    });
+
+    it('should allow client to change vote from "yes" to "no"', async () => {
+        const launchJettonWallet = blockchain.openContract(await JettonDefaultWallet.fromInit(deployer.address, launchJetton.address));
+        const sendResult = await launchJettonWallet.send(
+            deployer.getSender(),
+            {
+                value: toNano('0.1'),
+            },
+            {
+                $$type: 'TokenTransfer',
+                query_id: 1n,
+                custom_payload: null,
+                forward_ton_amount: toNano('0'),
+                forward_payload: beginCell().asSlice(),
+                amount: OUTPUT_MIN_AMOUNT,
+                recipient: otc.address,
+                response_destination: deployer.address,
+            },
+        );
+       await verifyTransactions(sendResult.transactions, deployer.address);
+
+        const checkOutput = await otc.send(
+            client.getSender(),
+            {
+                value: toNano('0.2'),
+            },
+            "check-output",
+        );
+    
+        await verifyTransactions(checkOutput.transactions, client.address);
+        const state = await otc.getCurrentState();
+        expect(state.toString()).toBe(STATE_SUPPLY_PROVIDED.toString());
+
+        const proposeFarmAccountResult = await otc.send(
+            deployer.getSender(),
+            {
+                value: toNano('0.3'),
+            },
+            {
+                $$type: 'ProposeFarmAccount',
+                queryId: 0n,
+                withdrawData: {
+                    $$type: 'FarmWithdrawData',
+                    farmAccount: poc.address,
+                    sendData: beginCell().endCell(),
+                },
+            },
+        );
+        await verifyTransactions(proposeFarmAccountResult.transactions, deployer.address);
+
+        // Client votes "yes" first
+        const voteYesResult = await otc.send(
+            client.getSender(),
+            {
+                value: toNano('0.3'),
+            },
+            "yes",
+        );
+        await verifyTransactions(voteYesResult.transactions, client.address);
+        
+        let currentState = await otc.getCurrentState();
+        expect(currentState.toString()).toBe(STATE_CLIENT_ACCEPTED.toString());
+
+        // Client changes vote to "no"
+        const voteNoResult = await otc.send(
+            client.getSender(),
+            {
+                value: toNano('0.3'),
+            },
+            "no",
+        );
+        await verifyTransactions(voteNoResult.transactions, client.address);
+        
+        currentState = await otc.getCurrentState();
+        expect(currentState.toString()).toBe(STATE_CLIENT_REJECTED.toString());
     });
 
 });

@@ -1,16 +1,11 @@
 import { Blockchain, SandboxContract, SendMessageResult, TreasuryContract } from '@ton/sandbox';
 import { Dictionary, Address, toNano, beginCell } from '@ton/core';
-import { OTC, Supply, TOTAL_LOCK_PERIOD } from '../build/OTC/OTC_OTC';
+import { OTC, Supply, TOTAL_LOCK_PERIOD, STATE_FUNDING, STATE_SUPPLY_IN_PROGRESS, STATE_SUPPLY_PROVIDED, STATE_WAITTING_FOR_CLIENT_ANSWER, STATE_CLIENT_ACCEPTED, STATE_CLIENT_REJECTED, STATE_CANCELED } from '../build/OTC/OTC_OTC';
 import '@ton/test-utils';
 import { MyJetton } from '../build/MyJetton/MyJetton_MyJetton';
 import { JettonDefaultWallet } from '../build/MyJetton/MyJetton_JettonDefaultWallet';
 import { verifyTransactions } from './utils/verifyTransactions';
 
-const STATE_REPLISHMENT_OF_FUNDS: number = 0;
-const STATE_SUPPLY_OF_FUNDS: number = 1;
-const STATE_WAITTING_FOR_CLIENT_ANSWER: number = 2;
-const STATE_CANCELLED: number = 3;
-const STATE_DEPOSIT_TON: number = 4;
 
 
 const SUPPLY_LOCK_PERIOD = 10*24*60*60;
@@ -170,7 +165,7 @@ describe('OTC', () => {
         );
 
         let state = await otc.getCurrentState();
-        expect(state.toString()).toBe(STATE_SUPPLY_OF_FUNDS.toString());
+        expect(state.toString()).toBe(STATE_SUPPLY_IN_PROGRESS.toString());
 
         await verifyTransactions(checkInput.transactions, client.address);
 
@@ -211,7 +206,7 @@ describe('OTC', () => {
         );
         await verifyTransactions(launchJettonSupplyResult2.transactions, deployer.address);
         state = await otc.getCurrentState();
-        expect(state.toString()).toBe(STATE_WAITTING_FOR_CLIENT_ANSWER.toString());
+        expect(state.toString()).toBe(STATE_SUPPLY_PROVIDED.toString());
 
 
         const proposeFarmAccountResult = await otc.send(
@@ -298,7 +293,7 @@ describe('OTC', () => {
         );
 
         let state = await otc.getCurrentState();
-        expect(state.toString()).toBe(STATE_SUPPLY_OF_FUNDS.toString());
+        expect(state.toString()).toBe(STATE_SUPPLY_IN_PROGRESS.toString());
 
         await verifyTransactions(checkInput.transactions, client.address);
 
@@ -339,7 +334,7 @@ describe('OTC', () => {
         );
         await verifyTransactions(launchJettonSupplyResult2.transactions, deployer.address);
         state = await otc.getCurrentState();
-        expect(state.toString()).toBe(STATE_WAITTING_FOR_CLIENT_ANSWER.toString());
+        expect(state.toString()).toBe(STATE_SUPPLY_PROVIDED.toString());
 
 
         blockchain.now! += Number(TOTAL_LOCK_PERIOD)+1;
@@ -401,7 +396,7 @@ describe('OTC', () => {
         );
 
         let state = await otc.getCurrentState();
-        expect(state.toString()).toBe(STATE_SUPPLY_OF_FUNDS.toString());
+        expect(state.toString()).toBe(STATE_SUPPLY_IN_PROGRESS.toString());
 
         await verifyTransactions(checkInput.transactions, client.address);
         
