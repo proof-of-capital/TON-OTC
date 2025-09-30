@@ -62,7 +62,7 @@ contract OTC {
 
 
         if (inputMasterToken != ZERO_ADDRESS) {
-            send(SendParameters{
+            message(MessageParameters{
                 to: inputMasterToken,
                 value: TAKE_WALLET_ADDRESS_AMOUNT,
                 mode: 0,
@@ -75,7 +75,7 @@ contract OTC {
             });
         }
 
-        send(SendParameters{
+        message(MessageParameters{
             to: outputMasterToken,
             value: TAKE_WALLET_ADDRESS_AMOUNT,
             mode: 0,
@@ -99,7 +99,7 @@ contract OTC {
             require(self.outputWalletAddress == ZERO_ADDRESS, "Output wallet address already set");
             self.outputWalletAddress = msg.wallet_address;
         }
-        send(SendParameters{
+        message(MessageParameters{
             to: self.admin,
             value: 0,
             mode: SendRemainingBalance|SendIgnoreErrors,
@@ -111,7 +111,7 @@ contract OTC {
 
     receive() {
         nativeReserve(MIN_OTC_BALANCE + self.tonBalance, 0);
-        send(SendParameters{
+        message(MessageParameters{
             to: self.admin,
             value: 0,
             mode: SendRemainingBalance|SendIgnoreErrors,
@@ -139,7 +139,7 @@ contract OTC {
         require(ctx.value >= MIN_CHECK_AMOUNT, "Value must be greater than min check input amount");
         require(self.state == STATE_FUNDING, "State must be replenishment of funds");
         self.inputTokenBalance = 0;
-        send(SendParameters{
+        message(MessageParameters{
             to: self.inputWalletAddress,
             value: 0,
             mode: SendRemainingBalance,
@@ -163,7 +163,7 @@ contract OTC {
         require(ctx.value >= MIN_CHECK_AMOUNT, "Value must be greater than min check input amount");
         require(self.state == STATE_FUNDING, "State must be replenishment of funds");
         self.outputTokenBalance = 0;
-        send(SendParameters{
+        message(MessageParameters{
             to: self.outputWalletAddress,
             value: 0,
             mode: SendRemainingBalance,
@@ -189,7 +189,7 @@ contract OTC {
         }
         nativeReserve(MIN_OTC_BALANCE + self.tonBalance, 0);
 
-        send(SendParameters{
+        message(MessageParameters{
             to: sender(),
             value: 0,
             mode: SendRemainingBalance|SendIgnoreErrors,
@@ -206,7 +206,7 @@ contract OTC {
 
         self.tonBalance = 0;
         
-        send(SendParameters{
+        message(MessageParameters{
             to: self.client,
             value: 0,
             mode: SendRemainingBalance,
@@ -221,7 +221,7 @@ contract OTC {
 
         nativeReserve(MIN_OTC_BALANCE + self.tonBalance, 0);
         
-        send(SendParameters{
+        message(MessageParameters{
             to: self.inputWalletAddress,
             value: 0,
             mode: SendRemainingBalance,
@@ -246,7 +246,7 @@ contract OTC {
         self.tonBalance = 0;
         nativeReserve(MIN_OTC_BALANCE + self.tonBalance, 0);
         
-        send(SendParameters{
+        message(MessageParameters{
             to: self.outputWalletAddress,
             value: 0,
             mode: SendRemainingBalance,
@@ -281,7 +281,7 @@ contract OTC {
                 self.state = STATE_CANCELED;
                 require(outputAmount <= self.outputTokenBalance, "Not enough output token for buyback");
                 self.outputTokenBalance -= outputAmount;
-                send(SendParameters{
+                message(MessageParameters{
                     to: self.outputWalletAddress,
                     value: FORWARD_TRANSACTION_VALUE,
                     mode: SendIgnoreErrors,
@@ -317,7 +317,7 @@ contract OTC {
         self.proposedAt = now();
         self.state = STATE_WAITTING_FOR_CLIENT_ANSWER;
 
-        send(SendParameters{
+        message(MessageParameters{
             to: self.admin,
             value: 0,
             mode: SendRemainingBalance|SendIgnoreErrors,
@@ -347,7 +347,7 @@ contract OTC {
         require(self.state == STATE_CLIENT_ACCEPTED, "Client must have accepted the proposal");
         require(self.withdrawDataIsAccepted!!== true, "Withdraw is not accepted");
 
-        send(SendParameters{
+        message(MessageParameters{
             to: self.outputWalletAddress,
             value: 0,
             mode: SendRemainingBalance|SendIgnoreErrors,
@@ -374,7 +374,7 @@ contract OTC {
         require(outputAmount <= self.outputTokenBalance, "Not enough POK for buyback");
         self.state = STATE_CANCELED;
         self.outputTokenBalance -= outputAmount;
-        send(SendParameters{
+        message(MessageParameters{
             to: self.inputWalletAddress,
             value: FORWARD_TRANSACTION_VALUE,
             mode: SendIgnoreErrors,
@@ -411,7 +411,7 @@ contract OTC {
         if (self.inputMasterToken == ZERO_ADDRESS) {
             self.tonBalance -= currentSupply.input;
             nativeReserve(MIN_OTC_BALANCE + self.tonBalance, 0);
-            send(SendParameters{
+            message(MessageParameters{
                 to: self.admin,
                 value: 0,
                 mode: SendRemainingBalance,
@@ -420,7 +420,7 @@ contract OTC {
         } else {
             self.inputTokenBalance -= currentSupply.input;
             nativeReserve(MIN_OTC_BALANCE + self.tonBalance, 0);
-            send(SendParameters{
+            message(MessageParameters{
                 to: self.inputWalletAddress,
                 value: 0,
                 mode: SendRemainingBalance,
