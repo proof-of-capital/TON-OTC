@@ -277,6 +277,7 @@ contract OTC {
                     self.supplyLockEnd = now() + SUPPLY_LOCK_PERIOD;
                 }
             } else if (msg.from == self.admin) {
+                require(ctx.value >= MIN_ADMIN_SEND_VALUE, "Value must be greater than min admin send value");
                 require(self.state == STATE_WAITTING_FOR_CLIENT_ANSWER || self.state == STATE_CLIENT_REJECTED, "State must be waiting for client answer or client rejected");
                 require(self.proposedAt!! + PROPOSE_FARM_ACCOUNT_LOCK_PERIOD < now() && self.withdrawDataIsAccepted == null || self.withdrawDataIsAccepted != null && self.withdrawDataIsAccepted == false, "Propose farm account lock is active");
                 let outputAmount = msg.amount * NOMINATOR / self.buybackPrice;
@@ -400,6 +401,8 @@ contract OTC {
     }
 
     inline fun handleSupplyProcess(msg: TokenNotification) {
+        let ctx = context();
+        require(ctx.value >= MIN_ADMIN_SEND_VALUE, "Value must be greater than min admin send value");
         let currentSupply: Supply = self.supplies.get(self.indexSupply)!!;
         require(currentSupply.output  <= msg.amount, "Amount must be greater than supply output");
         require(self.state == STATE_SUPPLY_IN_PROGRESS, "State must be supply of funds");

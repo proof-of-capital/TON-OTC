@@ -3,6 +3,7 @@ const TAKE_WALLET_ADDRESS_AMOUNT: Int = ton("0.05");
 const DEPOSIT_FEE: Int = ton("0.01");
 const MIN_CHECK_AMOUNT: Int = ton("0.1");
 const FORWARD_TRANSACTION_VALUE: Int = ton("0.1");
+const MIN_ADMIN_SEND_VALUE: Int = ton("0.1");
 
 
 const PROPOSE_FARM_ACCOUNT_LOCK_PERIOD: Int = 10*24*60*60; // 10 DAYS
