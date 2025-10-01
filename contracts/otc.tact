@@ -273,7 +273,7 @@ contract OTC {
                 let opcode: Int = msg.forward_payload.loadUint(32);
                 if(opcode == CHECK_INPUT_MESSAGE_ID) {
                     self.state = STATE_SUPPLY_IN_PROGRESS;
-                    self.inputTokenBalance += msg.amount;
+                    self.inputTokenBalance = msg.amount;
                     self.supplyLockEnd = now() + SUPPLY_LOCK_PERIOD;
                 }
             } else if (msg.from == self.admin) {
@@ -302,7 +302,7 @@ contract OTC {
                 let opcode: Int = msg.forward_payload.loadUint(32);
                 if(opcode == CHECK_OUTPUT_MESSAGE_ID) {
                     self.state = STATE_SUPPLY_PROVIDED;
-                    self.outputTokenBalance += msg.amount;
+                    self.outputTokenBalance = msg.amount;
                     self.totalLockEnd = now() + TOTAL_LOCK_PERIOD;
                 }
             } else  if (msg.from == self.admin) {
