@@ -126,8 +126,8 @@ describe('OTC without supply', () => {
         expect((await otc.getMinOutputAmount()).toString()).toBe(OUTPUT_MIN_AMOUNT.toString());
 
         // Test lock time getters
-        expect((await otc.getSupplyLockEndTime()).toString()).toBe('0'); // Should be null initially
-        expect((Number(await otc.getTotalLockEndTime()))).toBe(0); // Should be set during deployment
+        expect((Number(await otc.getSupplyLockEndTime()))).toBeGreaterThan(0); // Should be set during deployment
+        expect((Number(await otc.getTotalLockEndTime()))).toBe(0); // Should be null initially
 
         // Test buyback price getter
         expect(await otc.getBuybackPrice()).toBe(PRICE_TO_REFUND); // Should be set to refund price initially

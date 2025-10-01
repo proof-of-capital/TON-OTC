@@ -56,6 +56,7 @@ contract OTC {
             outputSum += value.output;
             inputSum += value.input;
         }
+        self.supplyLockEnd = now() + INITIAL_LOCK_PERIOD;
         require(outputSum >= outputMinAmount || !self.isSupply, "Output sum must be greater than output min amount");
         require(inputSum >= minInputAmount || self.isSupply, "Input sum must be greater than min input amount");
         require(self.supplyCount > 0 && self.isSupply || !self.isSupply && self.supplyCount == 0, "Supply count must be greater than 0 if input master token is not null or equal to zero if input master token is null");
