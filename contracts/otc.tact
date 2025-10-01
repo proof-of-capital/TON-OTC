@@ -134,6 +134,7 @@ contract OTC {
         nativeReserve(MIN_OTC_BALANCE + self.tonBalance, 0);
         let ctx = context();
         require(self.inputMasterToken != ZERO_ADDRESS, "Input token is jetton");
+        require(self.isSupply, "Input token is not supply");
         require(ctx.sender == self.client || ctx.sender == self.admin, "Only client or admin can check input");
         
         require(ctx.value >= MIN_CHECK_AMOUNT, "Value must be greater than min check input amount");
@@ -158,6 +159,7 @@ contract OTC {
     receive("check-output") {
         nativeReserve(MIN_OTC_BALANCE + self.tonBalance, 0);
         let ctx = context();
+        require(!self.isSupply, "Input token is supply");
         require(ctx.sender == self.client || ctx.sender == self.admin, "Only client or admin can check input");
         
         require(ctx.value >= MIN_CHECK_AMOUNT, "Value must be greater than min check input amount");
