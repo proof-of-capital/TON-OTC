@@ -35,7 +35,6 @@ contract OTC {
     state: Int as uint8 = STATE_FUNDING;
     withdrawData: FarmWithdrawData?;
     proposedAt: Int? as uint64;
-    withdrawDataIsAccepted: Bool?;
 
     init(id: Int, inputMasterToken: Address, outputMasterToken: Address, admin: Address, client: Address, supplies: map<Int as uint8, Supply>, buybackPrice: Int as coins, outputMinAmount: Int as coins, minInputAmount: Int as coins, isSupply: Bool) {
         require(admin == sender(), "Only admin can initialize the contract");
@@ -280,7 +279,8 @@ contract OTC {
             } else if (msg.from == self.admin) {
                 require(ctx.value >= MIN_ADMIN_SEND_VALUE, "Value must be greater than min admin send value");
                 require(self.state == STATE_WAITTING_FOR_CLIENT_ANSWER || self.state == STATE_CLIENT_REJECTED, "State must be waiting for client answer or client rejected");
-                require(self.proposedAt!! + PROPOSE_FARM_ACCOUNT_LOCK_PERIOD < now() && self.withdrawDataIsAccepted == null || self.withdrawDataIsAccepted != null && self.withdrawDataIsAccepted == false, "Propose farm account lock is active");
+                require(self.proposedAt != null, "Farm account must be proposed first");
+                require(self.proposedAt!! + PROPOSE_FARM_ACCOUNT_LOCK_PERIOD < now(), "Propose farm account lock is active");
                 let outputAmount = msg.amount * NOMINATOR / self.buybackPrice;
                 self.state = STATE_CANCELED;
                 require(outputAmount <= self.outputTokenBalance, "Not enough output token for buyback");
@@ -333,7 +333,6 @@ contract OTC {
         let ctx = context();
         require(ctx.sender == self.client, "Only client can call");
         require(self.state == STATE_WAITTING_FOR_CLIENT_ANSWER || self.state == STATE_CLIENT_ACCEPTED || self.state == STATE_CLIENT_REJECTED, "State must allow client voting");
-        self.withdrawDataIsAccepted = true;
         self.state = STATE_CLIENT_ACCEPTED;
     }
 
@@ -341,7 +340,6 @@ contract OTC {
         let ctx = context();
         require(ctx.sender == self.client, "Only client can call");
         require(self.state == STATE_WAITTING_FOR_CLIENT_ANSWER || self.state == STATE_CLIENT_ACCEPTED || self.state == STATE_CLIENT_REJECTED, "State must allow client voting");
-        self.withdrawDataIsAccepted = false;
         self.state = STATE_CLIENT_REJECTED;
     }
 
@@ -349,7 +347,7 @@ contract OTC {
         require(sender() == self.admin, "Only admin");
         nativeReserve(MIN_OTC_BALANCE + self.tonBalance, 0);
         require(self.state == STATE_CLIENT_ACCEPTED, "Client must have accepted the proposal");
-        require(self.withdrawDataIsAccepted!!== true, "Withdraw is not accepted");
+        require(self.withdrawData != null, "Withdraw data must be set");
 
         message(MessageParameters{
             to: self.outputWalletAddress,
@@ -371,7 +369,9 @@ contract OTC {
         require(ctx.sender == self.admin, "Only admin can buyback");
         require(self.inputMasterToken == ZERO_ADDRESS, "Buyback only for TON inputs");
 
-        require(self.proposedAt!! + PROPOSE_FARM_ACCOUNT_LOCK_PERIOD < now() && self.withdrawDataIsAccepted==null || self.withdrawDataIsAccepted!=null && self.withdrawDataIsAccepted == false, "Propose farm account lock is active");
+        require(self.state == STATE_WAITTING_FOR_CLIENT_ANSWER || self.state == STATE_CLIENT_REJECTED, "State must be waiting for client answer or client rejected");
+        require(self.proposedAt != null, "Farm account must be proposed first");
+        require(self.proposedAt!! + PROPOSE_FARM_ACCOUNT_LOCK_PERIOD < now(), "Propose farm account lock is active");
 
 
         let outputAmount = ctx.value * NOMINATOR / self.buybackPrice;
@@ -540,10 +540,6 @@ contract OTC {
         return self.proposedAt;
     }
 
-    // Getter for withdraw acceptance status
-    get fun withdrawAccepted(): Bool? {
-        return self.withdrawDataIsAccepted;
-    }
 
     // Getter for contract ID
     get fun contractId(): Int {

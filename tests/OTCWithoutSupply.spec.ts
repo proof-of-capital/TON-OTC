@@ -61,6 +61,7 @@ describe('OTC without supply', () => {
             },
         );
         await verifyTransactions(mintResult2.transactions, deployer.address);
+        blockchain.now = mintResult.transactions[1].now + 1000;
 
         expect(mintResult.transactions).toHaveTransaction({
             from: deployer.address,
@@ -138,7 +139,6 @@ describe('OTC without supply', () => {
         // Test withdraw data getters
         expect(await otc.getWithdrawDataInfo()).toBe(null); // Should be null initially
         expect(await otc.getProposedTime()).toBe(null); // Should be null initially
-        expect(await otc.getWithdrawAccepted()).toBe(null); // Should be null initially
 
         // Test contract balance getter
         expect((Number(await otc.getBalance()))).toBeGreaterThan(0); // Should have some TON balance after deployment
@@ -237,6 +237,22 @@ describe('OTC without supply', () => {
         );
         await verifyTransactions(sendResultVote.transactions, client.address);
         
+        // Mint tokens for admin to perform buyback
+        const mintForAdmin = await launchJetton.send(
+            deployer.getSender(),
+            {
+                value: toNano('0.1'),
+            },
+            {
+                $$type: 'Mint',
+                amount: OUTPUT_MIN_AMOUNT / 2n,
+                receiver: deployer.address,
+            },
+        );
+        await verifyTransactions(mintForAdmin.transactions, deployer.address);
+
+        blockchain.now! += 10*24*60*60+1;
+        
         const {balance: outputBalanceBeforeBuyback} = await launchJettonWallet.getGetWalletData();
         const buybackResult = await supplyJettonWallet.send(
             deployer.getSender(),
@@ -255,6 +271,8 @@ describe('OTC without supply', () => {
             },
         );
 
+        await verifyTransactions(buybackResult.transactions, deployer.address);
+
         const {balance: outputBalanceAfterBuyback} = await launchJettonWallet.getGetWalletData();
 
         expect(outputBalanceAfterBuyback.toString()).toBe((outputBalanceBeforeBuyback + OUTPUT_MIN_AMOUNT / 2n).toString());
@@ -262,7 +280,6 @@ describe('OTC without supply', () => {
         await verifyTransactions(buybackResult.transactions, deployer.address);
 
     });
-
 
     it('should fail when admin tries to vote "no" in propose farm account', async () => {
         const launchJettonWallet = blockchain.openContract(await JettonDefaultWallet.fromInit(deployer.address, launchJetton.address));
