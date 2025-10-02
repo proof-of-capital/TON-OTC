@@ -242,7 +242,6 @@ contract OTC {
         require(self.supplyLockEnd < now(), "Supply lock is active");
         self.state = STATE_CANCELED;
 
-        self.tonBalance = 0;
         nativeReserve(MIN_OTC_BALANCE + self.tonBalance, 0);
         
         message(MessageParameters{
@@ -387,6 +386,16 @@ contract OTC {
             }.toCell(),
         });
 
+    }
+
+    receive(msg: Slice) {
+        nativeReserve(MIN_OTC_BALANCE + self.tonBalance, 0);
+        message(MessageParameters{
+            to: sender(),
+            value: 0,
+            mode: SendRemainingBalance|SendIgnoreErrors,
+            bounce: false,
+        });
     }
    
     // //*warning: this function is for testing only ----------------------------------------------------------------------------------------------------------
