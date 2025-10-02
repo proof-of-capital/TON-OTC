@@ -388,13 +388,14 @@ contract OTC {
         });
 
     }
-    //*warning: this function is for testing only ----------------------------------------------------------------------------------------------------------
-    receive("unlock-for-test") {
-        require(sender() == self.admin, "Only admin can unlock for test");
-        self.totalLockEnd = 0;
-        self.supplyLockEnd = 0;
-        self.proposedAt = 0;
-    }
+   
+    // //*warning: this function is for testing only ----------------------------------------------------------------------------------------------------------
+    // receive("unlock-for-test") {
+    //     require(sender() == self.admin, "Only admin can unlock for test");
+    //     self.totalLockEnd = 0;
+    //     self.supplyLockEnd = 0;
+    //     self.proposedAt = 0;
+    // }
 
     inline fun handleSupplyProcess(msg: TokenNotification) {
         let ctx = context();
