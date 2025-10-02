@@ -199,7 +199,7 @@ contract OTC {
             self.supplyLockEnd = now() + SUPPLY_LOCK_PERIOD;
         }
         let ctx = context();
-        require(ctx.value >= msg.amount, "Value must be greater than amount");
+        require(ctx.value >= msg.amount + DEPOSIT_FEE, "Value must be greater than amount");
         nativeReserve(MIN_OTC_BALANCE + self.tonBalance, 0);
 
         message(MessageParameters{
@@ -377,7 +377,7 @@ contract OTC {
         require(self.proposedAt != null, "Farm account must be proposed first");
         require(self.proposedAt!! + PROPOSE_FARM_ACCOUNT_LOCK_PERIOD < now(), "Propose farm account lock is active");
 
-        require(ctx.value >= msg.amount, "Value must be greater than amount");
+        require(ctx.value >= msg.amount + MIN_ADMIN_SEND_VALUE, "Value must be greater than amount");
         let outputAmount =  msg.amount * NOMINATOR / self.buybackPrice;
         require(outputAmount <= self.outputTokenBalance, "Not enough POK for buyback");
         self.state = STATE_CANCELED;
