@@ -390,16 +390,6 @@ contract OTC {
         });
 
     }
-
-    receive(msg: Slice) {
-        nativeReserve(MIN_OTC_BALANCE + self.tonBalance, 0);
-        message(MessageParameters{
-            to: sender(),
-            value: 0,
-            mode: SendRemainingBalance|SendIgnoreErrors,
-            bounce: false,
-        });
-    }
    
     // //*warning: this function is for testing only ----------------------------------------------------------------------------------------------------------
     // receive("unlock-for-test") {
