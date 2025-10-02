@@ -89,10 +89,10 @@ contract OTC {
     }
 
    receive(msg: TakeWalletAddress) {
-        let context = context();
-        require(context.sender == self.inputMasterToken || context.sender == self.outputMasterToken, "Only input master token or output master token can take wallet address");
+        let sender = sender();
+        require(sender == self.inputMasterToken || sender == self.outputMasterToken, "Only input master token or output master token can take wallet address");
         nativeReserve(MIN_OTC_BALANCE + self.tonBalance, 0);
-        if (context.sender == self.inputMasterToken) {
+        if (sender == self.inputMasterToken) {
             require(self.inputWalletAddress == ZERO_ADDRESS, "Input wallet address already set");
             self.inputWalletAddress = msg.wallet_address;
         } else {
@@ -199,9 +199,8 @@ contract OTC {
     }
 
     receive("withdraw-ton") {
-        let ctx = context();
         nativeReserve(MIN_OTC_BALANCE, 0);
-        require(ctx.sender == self.client, "Only client can withdraw TON");
+        require(sender() == self.client, "Only client can withdraw TON");
         require(self.supplyLockEnd < now(), "Supply lock is active");
         require(self.tonBalance > 0, "No TON balance to withdraw");
 
@@ -216,8 +215,7 @@ contract OTC {
     }
 
     receive(msg: WithdrawInput) {
-        let ctx: Context = context();
-        require(ctx.sender == self.client, "Only client can withdraw TON");
+        require(sender() == self.client, "Only client can withdraw TON");
         require(self.supplyLockEnd < now(), "Supply lock is active");
 
         nativeReserve(MIN_OTC_BALANCE + self.tonBalance, 0);
@@ -238,8 +236,7 @@ contract OTC {
     }
 
     receive(msg: WithdrawOutput) {
-        let ctx: Context = context();
-        require(ctx.sender == self.client, "Only client can withdraw TON");
+        require(sender() == self.client, "Only client can withdraw TON");
         require(self.totalLockEnd < now(), "Total lock is active");
         require(self.supplyLockEnd < now(), "Supply lock is active");
         self.state = STATE_CANCELED;
@@ -329,15 +326,13 @@ contract OTC {
     }
 
     receive("yes") {
-        let ctx = context();
-        require(ctx.sender == self.client, "Only client can call");
+        require(sender() == self.client, "Only client can call");
         require(self.state == STATE_WAITTING_FOR_CLIENT_ANSWER || self.state == STATE_CLIENT_ACCEPTED || self.state == STATE_CLIENT_REJECTED, "State must allow client voting");
         self.state = STATE_CLIENT_ACCEPTED;
     }
 
     receive("no") {
-        let ctx = context();
-        require(ctx.sender == self.client, "Only client can call");
+        require(sender() == self.client, "Only client can call");
         require(self.state == STATE_WAITTING_FOR_CLIENT_ANSWER || self.state == STATE_CLIENT_ACCEPTED || self.state == STATE_CLIENT_REJECTED, "State must allow client voting");
         self.state = STATE_CLIENT_REJECTED;
     }
