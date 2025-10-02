@@ -281,10 +281,11 @@ contract OTC {
                 self.state = STATE_CANCELED;
                 require(outputAmount <= self.outputTokenBalance, "Not enough output token for buyback");
                 self.outputTokenBalance -= outputAmount;
+                nativeReserve(MIN_OTC_BALANCE + self.tonBalance, 0);
                 message(MessageParameters{
                     to: self.outputWalletAddress,
-                    value: FORWARD_TRANSACTION_VALUE,
-                    mode: SendIgnoreErrors,
+                    value: 0,
+                    mode: SendRemainingBalance,
                     bounce: false,
                     body: TokenTransfer {
                         query_id: msg.query_id,
