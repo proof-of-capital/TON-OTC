@@ -188,6 +188,8 @@ contract OTC {
             self.state = STATE_SUPPLY_IN_PROGRESS;
             self.supplyLockEnd = now() + SUPPLY_LOCK_PERIOD;
         }
+        let ctx = context();
+        require(ctx.value >= msg.amount, "Value must be greater than amount");
         nativeReserve(MIN_OTC_BALANCE + self.tonBalance, 0);
 
         message(MessageParameters{
