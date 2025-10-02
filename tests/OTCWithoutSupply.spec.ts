@@ -114,7 +114,6 @@ describe('OTC without supply', () => {
 
         // Test balance getters
         expect((await otc.getTonBalanceAmount()).toString()).toBe('0'); // Initial TON balance
-        expect((await otc.getInputTokenBalanceAmount()).toString()).toBe('0'); // Initial input token balance
         expect((await otc.getOutputTokenBalanceAmount()).toString()).toBe('0'); // Initial output token balance
 
         // Test supply getters

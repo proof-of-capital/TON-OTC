@@ -21,7 +21,6 @@ contract OTC {
     admin: Address;
     client: Address;
     tonBalance: Int as coins = 0;
-    inputTokenBalance: Int as coins = 0;
     outputTokenBalance: Int as coins = 0;
     supplies: map<Int as uint8, Supply>;
     supplyCount: Int as uint8 = 0;
@@ -139,7 +138,6 @@ contract OTC {
         
         require(ctx.value >= MIN_CHECK_AMOUNT, "Value must be greater than min check input amount");
         require(self.state == STATE_FUNDING, "State must be replenishment of funds");
-        self.inputTokenBalance = 0;
         message(MessageParameters{
             to: self.inputWalletAddress,
             value: 0,
@@ -269,7 +267,6 @@ contract OTC {
                 let opcode: Int = msg.forward_payload.loadUint(32);
                 if(opcode == CHECK_INPUT_MESSAGE_ID) {
                     self.state = STATE_SUPPLY_IN_PROGRESS;
-                    self.inputTokenBalance = msg.amount;
                     self.supplyLockEnd = now() + SUPPLY_LOCK_PERIOD;
                 }
             } else if (msg.from == self.admin) {
@@ -411,7 +408,7 @@ contract OTC {
             self.state = STATE_SUPPLY_PROVIDED;
             self.totalLockEnd = now() + TOTAL_LOCK_PERIOD;
         }
-
+        self.outputTokenBalance += currentSupply.output;
         if (self.inputMasterToken == ZERO_ADDRESS) {
             self.tonBalance -= currentSupply.input;
             nativeReserve(MIN_OTC_BALANCE + self.tonBalance, 0);
@@ -422,7 +419,6 @@ contract OTC {
                 bounce: false,
             });
         } else {
-            self.inputTokenBalance -= currentSupply.input;
             nativeReserve(MIN_OTC_BALANCE, 0);
             message(MessageParameters{
                 to: self.inputWalletAddress,
@@ -471,11 +467,6 @@ contract OTC {
     // Getter for TON balance
     get fun tonBalanceAmount(): Int {
         return self.tonBalance;
-    }
-
-    // Getter for input token balance
-    get fun inputTokenBalanceAmount(): Int {
-        return self.inputTokenBalance;
     }
 
     // Getter for output token balance
