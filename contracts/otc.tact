@@ -423,7 +423,7 @@ contract OTC {
             });
         } else {
             self.inputTokenBalance -= currentSupply.input;
-            nativeReserve(MIN_OTC_BALANCE + self.tonBalance, 0);
+            nativeReserve(MIN_OTC_BALANCE, 0);
             message(MessageParameters{
                 to: self.inputWalletAddress,
                 value: 0,
