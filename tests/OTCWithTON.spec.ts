@@ -121,6 +121,28 @@ describe('OTC with TON instead of supply token', () => {
         expect(state.toString()).toBe(STATE_SUPPLY_IN_PROGRESS.toString());
     });
 
+    it('should successfully deposit TON and transition to supply state', async () => {
+
+        const otcBalanceBefore = await otc.getBalance();
+        const depositResult = await otc.send(
+            client.getSender(),
+            {
+                value: FIRST_SUPPLY.input + SECOND_SUPPLY.input + toNano('0.01'), // Send 150 TON
+            },
+            'deposit-ton',
+        );
+
+        await verifyTransactions(depositResult.transactions, client.address);
+
+        const otcBalanceAfter = await otc.getBalance();
+
+        expect(otcBalanceAfter).toBeGreaterThan(otcBalanceBefore +FIRST_SUPPLY.input + SECOND_SUPPLY.input);
+
+        // Check that state changed to SUPPLY_OF_FUNDS
+        let state = await otc.getCurrentState();
+        expect(state.toString()).toBe(STATE_SUPPLY_IN_PROGRESS.toString());
+    });
+
     it('should successfully complete full OTC cycle with TON', async () => {
         // Step 1: Client deposits TON
         const depositResult = await otc.send(
