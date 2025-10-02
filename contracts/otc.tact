@@ -181,7 +181,6 @@ contract OTC {
     }
 
     receive(msg: DepositTon) {
-        let ctx = context();
         require(self.state == STATE_FUNDING, "State must be replenishment of funds");
         require(self.inputMasterToken==ZERO_ADDRESS, "Input token is jetton");
         self.tonBalance += msg.amount;

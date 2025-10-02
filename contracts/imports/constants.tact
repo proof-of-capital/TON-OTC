@@ -8,7 +8,6 @@ const MIN_ADMIN_SEND_VALUE: Int = ton("0.1");
 
 const PROPOSE_FARM_ACCOUNT_LOCK_PERIOD: Int = 10*24*60*60; // 10 DAYS
 const SUPPLY_LOCK_PERIOD: Int = 10*24*60*60; // 10 days for supply phase (USDT/TON only)
-const WITHDRAW_LOCK_PERIOD: Int = 10*24*60*60; // 10 days for withdraw after proposing farm address
 const TOTAL_LOCK_PERIOD: Int = 120*24*60*60; // 4 months total lock
 const INITIAL_LOCK_PERIOD: Int = 120*24*60*60; // 4 months initial lock
 
