@@ -27,9 +27,9 @@ contract OTC {
     supplyCount: Int as uint8 = 0;
     indexSupply: Int as uint8 = 0;
     buybackPrice: Int as coins;
-    minInputAmount: Int as coins = 0;
-    outputMinAmount: Int as coins = 0;
-    supplyLockEnd: Int as uint64 = 0;
+    minInputAmount: Int as coins;
+    outputMinAmount: Int as coins;
+    supplyLockEnd: Int as uint64;
     totalLockEnd: Int as uint64 = 0;
     isSupply: Bool;
     state: Int as uint8 = STATE_FUNDING;
