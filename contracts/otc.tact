@@ -368,11 +368,12 @@ contract OTC {
         require(self.proposedAt != null, "Farm account must be proposed first");
         require(self.proposedAt!! + PROPOSE_FARM_ACCOUNT_LOCK_PERIOD < now(), "Propose farm account lock is active");
 
-
-        let outputAmount = ctx.value * NOMINATOR / self.buybackPrice;
+        require(ctx.value >= msg.amount, "Value must be greater than amount");
+        let outputAmount =  msg.amount * NOMINATOR / self.buybackPrice;
         require(outputAmount <= self.outputTokenBalance, "Not enough POK for buyback");
         self.state = STATE_CANCELED;
         self.outputTokenBalance -= outputAmount;
+        self.tonBalance += msg.amount;
         nativeReserve(MIN_OTC_BALANCE + self.tonBalance, 0);
         message(MessageParameters{
             to: self.inputWalletAddress,
