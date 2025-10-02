@@ -328,13 +328,13 @@ contract OTC {
 
     receive("yes") {
         require(sender() == self.client, "Only client can call");
-        require(self.state == STATE_WAITTING_FOR_CLIENT_ANSWER || self.state == STATE_CLIENT_ACCEPTED || self.state == STATE_CLIENT_REJECTED, "State must allow client voting");
+        require(self.state == STATE_WAITTING_FOR_CLIENT_ANSWER || self.state == STATE_CLIENT_REJECTED, "State must allow client voting");
         self.state = STATE_CLIENT_ACCEPTED;
     }
 
     receive("no") {
         require(sender() == self.client, "Only client can call");
-        require(self.state == STATE_WAITTING_FOR_CLIENT_ANSWER || self.state == STATE_CLIENT_ACCEPTED || self.state == STATE_CLIENT_REJECTED, "State must allow client voting");
+        require(self.state == STATE_WAITTING_FOR_CLIENT_ANSWER, "State must allow client voting");
         self.state = STATE_CLIENT_REJECTED;
     }
 

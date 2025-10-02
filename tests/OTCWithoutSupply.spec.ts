@@ -553,7 +553,7 @@ describe('OTC without supply', () => {
         expect(currentState.toString()).toBe(STATE_CLIENT_ACCEPTED.toString());
     });
 
-    it('should allow client to change vote from "yes" to "no"', async () => {
+    it('should not allow client to change vote from "yes" to "no"', async () => {
         const launchJettonWallet = blockchain.openContract(await JettonDefaultWallet.fromInit(deployer.address, launchJetton.address));
         const sendResult = await launchJettonWallet.send(
             deployer.getSender(),
@@ -615,7 +615,6 @@ describe('OTC without supply', () => {
         let currentState = await otc.getCurrentState();
         expect(currentState.toString()).toBe(STATE_CLIENT_ACCEPTED.toString());
 
-        // Client changes vote to "no"
         const voteNoResult = await otc.send(
             client.getSender(),
             {
@@ -623,10 +622,16 @@ describe('OTC without supply', () => {
             },
             "no",
         );
-        await verifyTransactions(voteNoResult.transactions, client.address);
         
+        expect(voteNoResult.transactions).toHaveTransaction({
+            success: false,
+            to: otc.address,
+            exitCode: OTC_errors_backward["State must allow client voting"],
+        });
+        
+        // State should remain STATE_CLIENT_ACCEPTED
         currentState = await otc.getCurrentState();
-        expect(currentState.toString()).toBe(STATE_CLIENT_REJECTED.toString());
+        expect(currentState.toString()).toBe(STATE_CLIENT_ACCEPTED.toString());
     });
 
 });
