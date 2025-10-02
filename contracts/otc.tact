@@ -373,10 +373,11 @@ contract OTC {
         require(outputAmount <= self.outputTokenBalance, "Not enough POK for buyback");
         self.state = STATE_CANCELED;
         self.outputTokenBalance -= outputAmount;
+        nativeReserve(MIN_OTC_BALANCE + self.tonBalance, 0);
         message(MessageParameters{
             to: self.inputWalletAddress,
-            value: FORWARD_TRANSACTION_VALUE,
-            mode: SendIgnoreErrors,
+            value: 0,
+            mode: SendRemainingBalance,
             bounce: false,
             body: TokenTransfer {
                 query_id: msg.queryId,
