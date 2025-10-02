@@ -1,6 +1,7 @@
 import { toNano, Address, Dictionary } from '@ton/core';
 import { OTC, Supply, dictValueParserSupply } from '../build/OTC/OTC_OTC';
 import { NetworkProvider } from '@ton/blueprint';
+import { addContractAddress } from './utils/contractAddressManager';
 
 // Define meaningful constants for OTC initialization
 const OTC_ID = 1n;
@@ -19,13 +20,17 @@ const SUPPLY_DATA = [
     }
 ];
 
-// Address constants (you should replace these with actual addresses)
-const SUPPLY_JETTON_ADDRESS = Address.parse('EQD...'); // Replace with actual supply jetton address
-const LAUNCH_JETTON_ADDRESS = Address.parse('EQD...'); // Replace with actual launch jetton address
-const DEPLOYER_ADDRESS = Address.parse('EQD...'); // Replace with actual deployer address
-const CLIENT_ADDRESS = Address.parse('EQD...'); // Replace with actual client address
+// Address constants - using zero address as placeholder
+// You should replace these with actual addresses before deployment
+const SUPPLY_JETTON_ADDRESS = Address.parse('EQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAM9c'); // Zero address as placeholder
+const LAUNCH_JETTON_ADDRESS = Address.parse('EQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAM9c'); // Zero address as placeholder
+const DEPLOYER_ADDRESS = Address.parse('EQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAM9c'); // Zero address as placeholder
+const CLIENT_ADDRESS = Address.parse('EQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAM9c'); // Zero address as placeholder
 
 export async function run(provider: NetworkProvider) {
+    // Determine network type based on provider
+    const network = provider.network() === 'mainnet' ? 'mainnet' : 'testnet';
+    
     // Create supply dictionary with proper Supply structure using dictValueParserSupply
     const supplyDictionary = Dictionary.empty(Dictionary.Keys.Uint(32), dictValueParserSupply());
     
@@ -71,8 +76,14 @@ export async function run(provider: NetworkProvider) {
     // Wait for contract deployment to complete
     await provider.waitForDeploy(oTC.address);
 
+    // Save contract address to JSON file
+    const contractName = `OTC_${OTC_ID}`;
+    addContractAddress(network, contractName, oTC.address);
+
     // Log deployment information
     console.log('OTC contract deployed at:', oTC.address.toString());
+    console.log('Network:', network);
+    console.log('Contract saved as:', contractName);
     console.log('OTC ID:', OTC_ID);
     console.log('Supply Jetton Address:', SUPPLY_JETTON_ADDRESS.toString());
     console.log('Launch Jetton Address:', LAUNCH_JETTON_ADDRESS.toString());

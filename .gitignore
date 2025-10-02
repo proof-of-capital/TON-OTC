@@ -22,3 +22,6 @@ Session.vim
 .emacs/
 .helix/
 example-test/
+
+deployed-contracts.json
+.env
