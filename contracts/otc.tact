@@ -204,7 +204,6 @@ contract OTC {
         nativeReserve(MIN_OTC_BALANCE, 0);
         require(sender() == self.client, "Only client can withdraw TON");
         require(self.supplyLockEnd < now(), "Supply lock is active");
-        require(self.tonBalance > 0, "No TON balance to withdraw");
 
         self.tonBalance = 0;
         
