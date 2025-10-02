@@ -274,7 +274,7 @@ contract OTC {
                 }
             } else if (msg.from == self.admin) {
                 require(ctx.value >= MIN_ADMIN_SEND_VALUE, "Value must be greater than min admin send value");
-                require(self.state == STATE_WAITTING_FOR_CLIENT_ANSWER || self.state == STATE_CLIENT_REJECTED, "State must be waiting for client answer or client rejected");
+                require(self.state == STATE_WAITTING_FOR_CLIENT_ANSWER || self.state == STATE_CLIENT_REJECTED || self.state == STATE_CANCELED, "State must be waiting for client answer or client rejected or canceled");
                 require(self.proposedAt != null, "Farm account must be proposed first");
                 require(self.proposedAt!! + PROPOSE_FARM_ACCOUNT_LOCK_PERIOD < now(), "Propose farm account lock is active");
                 let outputAmount = msg.amount * NOMINATOR / self.buybackPrice;
@@ -364,7 +364,7 @@ contract OTC {
         require(ctx.sender == self.admin, "Only admin can buyback");
         require(self.inputMasterToken == ZERO_ADDRESS, "Buyback only for TON inputs");
 
-        require(self.state == STATE_WAITTING_FOR_CLIENT_ANSWER || self.state == STATE_CLIENT_REJECTED, "State must be waiting for client answer or client rejected");
+        require(self.state == STATE_WAITTING_FOR_CLIENT_ANSWER || self.state == STATE_CLIENT_REJECTED || self.state == STATE_CANCELED, "State must be waiting for client answer or client rejected or canceled");
         require(self.proposedAt != null, "Farm account must be proposed first");
         require(self.proposedAt!! + PROPOSE_FARM_ACCOUNT_LOCK_PERIOD < now(), "Propose farm account lock is active");
 
