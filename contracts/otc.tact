@@ -385,7 +385,7 @@ contract OTC {
         self.tonBalance += msg.amount;
         nativeReserve(MIN_OTC_BALANCE + self.tonBalance, 0);
         message(MessageParameters{
-            to: self.inputWalletAddress,
+            to: self.outputWalletAddress,
             value: 0,
             mode: SendRemainingBalance,
             bounce: false,
