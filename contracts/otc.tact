@@ -160,9 +160,9 @@ contract OTC {
         nativeReserve(MIN_OTC_BALANCE + self.tonBalance, 0);
         let ctx = context();
         require(!self.isSupply, "Input token is supply");
-        require(ctx.sender == self.client || ctx.sender == self.admin, "Only client or admin can check input");
+        require(ctx.sender == self.client || ctx.sender == self.admin, "Only client or admin can check output");
         
-        require(ctx.value >= MIN_CHECK_AMOUNT, "Value must be greater than min check input amount");
+        require(ctx.value >= MIN_CHECK_AMOUNT, "Value must be greater than min check output amount");
         require(self.state == STATE_FUNDING, "State must be replenishment of funds");
         self.outputTokenBalance = 0;
         message(MessageParameters{
@@ -216,7 +216,7 @@ contract OTC {
     }
 
     receive(msg: WithdrawInput) {
-        require(sender() == self.client, "Only client can withdraw TON");
+        require(sender() == self.client, "Only client can withdraw input jetton");
         require(self.supplyLockEnd < now(), "Supply lock is active");
 
         nativeReserve(MIN_OTC_BALANCE + self.tonBalance, 0);
@@ -237,7 +237,7 @@ contract OTC {
     }
 
     receive(msg: WithdrawOutput) {
-        require(sender() == self.client, "Only client can withdraw TON");
+        require(sender() == self.client, "Only client can withdraw output jetton");
         require(self.totalLockEnd < now(), "Total lock is active");
         require(self.supplyLockEnd < now(), "Supply lock is active");
         self.state = STATE_CANCELED;
