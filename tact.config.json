@@ -12,12 +12,12 @@
       "mode": "full"
     },
     {
-      "name": "MyJetton",
-      "path": "contracts/jetton/my_jetton.tact",
-      "output": "build/MyJetton",
+      "name": "JettonMinter",
+      "path": "contracts/jetton/base/jetton-minter.tact",
+      "output": "build/JettonMinter",
       "options": {
-          "debug": false,
-          "external": false
+        "debug": false,
+        "external": false
       },
       "mode": "full"
     }

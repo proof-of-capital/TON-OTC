@@ -2,8 +2,8 @@ import { Blockchain, SandboxContract, SendMessageResult, TreasuryContract } from
 import { Dictionary, Address, toNano, beginCell } from '@ton/core';
 import { OTC, Supply, TOTAL_LOCK_PERIOD, STATE_FUNDING, STATE_SUPPLY_IN_PROGRESS, STATE_SUPPLY_PROVIDED, STATE_WAITTING_FOR_CLIENT_ANSWER, STATE_CLIENT_ACCEPTED, STATE_CLIENT_REJECTED, STATE_CANCELED } from '../build/OTC/OTC_OTC';
 import '@ton/test-utils';
-import { MyJetton } from '../build/MyJetton/MyJetton_MyJetton';
-import { JettonDefaultWallet } from '../build/MyJetton/MyJetton_JettonDefaultWallet';
+import { JettonMinter } from '../build/JettonMinter/JettonMinter_JettonMinter';
+import { JettonWallet } from '../build/JettonMinter/JettonMinter_JettonWallet';
 import { verifyTransactions } from './utils/verifyTransactions';
 
 
@@ -15,7 +15,7 @@ describe('OTC with TON instead of supply token', () => {
     let client: SandboxContract<TreasuryContract>;
     let poc: SandboxContract<TreasuryContract>;
     let otc: SandboxContract<OTC>;
-    let launchJetton: SandboxContract<MyJetton>;
+    let launchJetton: SandboxContract<JettonMinter>;
     let supplyDictionary: Dictionary<number, Supply> = Dictionary.empty();
     const ZERO_ADDRESS = Address.parse('UQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAJKZ');
 
@@ -46,7 +46,7 @@ describe('OTC with TON instead of supply token', () => {
 
         // Create launch jetton (output token)
         launchJetton = blockchain.openContract(
-            await MyJetton.fromInit(deployer.address, beginCell().endCell(), 109999990000000000000000000000000n),
+            await JettonMinter.fromInit(109999990000000000000000000000000n, deployer.address, beginCell().endCell(), true),
         );
 
         const mintResult = await launchJetton.send(
@@ -56,8 +56,17 @@ describe('OTC with TON instead of supply token', () => {
             },
             {
                 $$type: 'Mint',
-                amount: FIRST_SUPPLY.output + SECOND_SUPPLY.output,
+                mintMessage: {
+                    $$type: 'JettonTransferInternal',
+                    queryId: 0n,
+                    amount: FIRST_SUPPLY.output + SECOND_SUPPLY.output,
+                    sender: deployer.address,
+                    responseDestination: null,
+                    forwardTonAmount: 0n,
+                    forwardPayload: beginCell().storeUint(0x0004d318, 32).endCell().asSlice(),
+                },
                 receiver: deployer.address,
+                queryId: 0n,
             },
         );
 
@@ -121,7 +130,7 @@ describe('OTC with TON instead of supply token', () => {
         expect(state.toString()).toBe(STATE_SUPPLY_IN_PROGRESS.toString());
     });
 
-    it('should successfully deposit TON and transition to supply state', async () => {
+    it('should successfully deposit TON and verify balance increase', async () => {
 
         const otcBalanceBefore = await otc.getBalance();
         const depositResult = await otc.send(
@@ -129,7 +138,7 @@ describe('OTC with TON instead of supply token', () => {
             {
                 value: FIRST_SUPPLY.input + SECOND_SUPPLY.input + toNano('0.01'), // Send 150 TON
             },
-            'deposit-ton',
+            'deposit-ton',  
         );
 
         await verifyTransactions(depositResult.transactions, client.address);
@@ -163,7 +172,7 @@ describe('OTC with TON instead of supply token', () => {
 
         // Step 2: Deployer supplies launch tokens
         const launchJettonWallet = blockchain.openContract(
-            await JettonDefaultWallet.fromInit(deployer.address, launchJetton.address),
+            await JettonWallet.fromInit(deployer.address, launchJetton.address, 0n),
         );
 
         const launchJettonSupplyResult = await launchJettonWallet.send(
@@ -172,14 +181,14 @@ describe('OTC with TON instead of supply token', () => {
                 value: toNano('4'),
             },
             {
-                $$type: 'TokenTransfer',
+                $$type: 'JettonTransfer',
                 amount: FIRST_SUPPLY.output,
-                recipient: otc.address,
-                forward_ton_amount: toNano('3'),
-                forward_payload: beginCell().asSlice(),
-                query_id: 0n,
-                response_destination: deployer.address,
-                custom_payload: null,
+                destination: otc.address,
+                forwardTonAmount: toNano('3'),
+                forwardPayload: beginCell().storeUint(0x0004d318, 32).endCell().asSlice(),
+                queryId: 0n,
+                responseDestination: deployer.address,
+                customPayload: null,
             },
         );
         await verifyTransactions(launchJettonSupplyResult.transactions, deployer.address);
@@ -190,14 +199,14 @@ describe('OTC with TON instead of supply token', () => {
                 value: toNano('4'),
             },
             {
-                $$type: 'TokenTransfer',
+                $$type: 'JettonTransfer',
                 amount: SECOND_SUPPLY.output,
-                recipient: otc.address,
-                forward_ton_amount: toNano('3'),
-                forward_payload: beginCell().asSlice(),
-                query_id: 0n,
-                response_destination: deployer.address,
-                custom_payload: null,
+                destination: otc.address,
+                forwardTonAmount: toNano('3'),
+                forwardPayload: beginCell().storeUint(0x0004d318, 32).endCell().asSlice(),
+                queryId: 0n,
+                responseDestination: deployer.address,
+                customPayload: null,
             },
         );
         await verifyTransactions(launchJettonSupplyResult2.transactions, deployer.address);
@@ -218,7 +227,7 @@ describe('OTC with TON instead of supply token', () => {
                 withdrawData: {
                     $$type: 'FarmWithdrawData',
                     farmAccount: poc.address,
-                    sendData: beginCell().endCell(),
+                    sendData: beginCell().storeUint(0x0004d318, 32).endCell(),
                 },
             },
         );
@@ -246,11 +255,11 @@ describe('OTC with TON instead of supply token', () => {
                 forwardTonAmount: toNano('0.1'),
             },
         );
-        await verifyTransactions(sendResultSend.transactions, poc.address);
+        await verifyTransactions(sendResultSend.transactions, deployer.address);
 
         // Verify farm received the tokens
         const pocJettonWallet = blockchain.openContract(
-            await JettonDefaultWallet.fromInit(poc.address, launchJetton.address),
+            await JettonWallet.fromInit(poc.address, launchJetton.address, 0n),
         );
 
         const {balance: pocBalance} = await pocJettonWallet.getGetWalletData();
@@ -277,7 +286,7 @@ describe('OTC with TON instead of supply token', () => {
 
         // Step 2: Deployer supplies launch tokens
         const launchJettonWallet = blockchain.openContract(
-            await JettonDefaultWallet.fromInit(deployer.address, launchJetton.address),
+            await JettonWallet.fromInit(deployer.address, launchJetton.address, 0n),
         );
 
 
@@ -321,7 +330,7 @@ describe('OTC with TON instead of supply token', () => {
 
         // Step 2: Deployer supplies launch tokens
         const launchJettonWallet = blockchain.openContract(
-            await JettonDefaultWallet.fromInit(deployer.address, launchJetton.address),
+            await JettonWallet.fromInit(deployer.address, launchJetton.address, 0n),
         );
 
         const launchJettonSupplyResult = await launchJettonWallet.send(
@@ -330,14 +339,14 @@ describe('OTC with TON instead of supply token', () => {
                 value: toNano('4'),
             },
             {
-                $$type: 'TokenTransfer',
+                $$type: 'JettonTransfer',
                 amount: FIRST_SUPPLY.output,
-                recipient: otc.address,
-                forward_ton_amount: toNano('3'),
-                forward_payload: beginCell().asSlice(),
-                query_id: 0n,
-                response_destination: deployer.address,
-                custom_payload: null,
+                destination: otc.address,
+                forwardTonAmount: toNano('3'),
+                forwardPayload: beginCell().storeUint(0x0004d318, 32).endCell().asSlice(),
+                queryId: 0n,
+                responseDestination: deployer.address,
+                customPayload: null,
             },
         );
         await verifyTransactions(launchJettonSupplyResult.transactions, deployer.address);
@@ -348,14 +357,14 @@ describe('OTC with TON instead of supply token', () => {
                 value: toNano('4'),
             },
             {
-                $$type: 'TokenTransfer',
+                $$type: 'JettonTransfer',
                 amount: SECOND_SUPPLY.output,
-                recipient: otc.address,
-                forward_ton_amount: toNano('3'),
-                forward_payload: beginCell().asSlice(),
-                query_id: 0n,
-                response_destination: deployer.address,
-                custom_payload: null,
+                destination: otc.address,
+                forwardTonAmount: toNano('3'),
+                forwardPayload: beginCell().storeUint(0x0004d318, 32).endCell().asSlice(),
+                queryId: 0n,
+                responseDestination: deployer.address,
+                customPayload: null,
             },
         );
         await verifyTransactions(launchJettonSupplyResult2.transactions, deployer.address);
@@ -381,7 +390,7 @@ describe('OTC with TON instead of supply token', () => {
 
         // Verify client received the launch tokens
         const clientJettonWallet = blockchain.openContract(
-            await JettonDefaultWallet.fromInit(client.address, launchJetton.address),
+            await JettonWallet.fromInit(client.address, launchJetton.address, 0n),
         );
         
         const {balance: clientBalance} = await clientJettonWallet.getGetWalletData();

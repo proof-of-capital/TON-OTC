@@ -2,8 +2,8 @@ import { Blockchain, SandboxContract, TreasuryContract } from '@ton/sandbox';
 import { Address, beginCell, Dictionary, toNano } from '@ton/core';
 import { OTC, STATE_SUPPLY_PROVIDED, STATE_CLIENT_ACCEPTED, STATE_CLIENT_REJECTED, Supply, OTC_errors_backward } from '../build/OTC/OTC_OTC';
 import '@ton/test-utils';
-import { MyJetton } from '../build/MyJetton/MyJetton_MyJetton';
-import { JettonDefaultWallet } from '../build/MyJetton/MyJetton_JettonDefaultWallet';
+import { JettonMinter } from '../build/JettonMinter/JettonMinter_JettonMinter';
+import { JettonWallet } from '../build/JettonMinter/JettonMinter_JettonWallet';
 import { verifyTransactions } from './utils/verifyTransactions';
 
 describe('OTC without supply', () => {
@@ -12,8 +12,8 @@ describe('OTC without supply', () => {
     let client: SandboxContract<TreasuryContract>;
     let poc: SandboxContract<TreasuryContract>;
     let otc: SandboxContract<OTC>;
-    let launchJetton: SandboxContract<MyJetton>;
-    let supplyJetton: SandboxContract<MyJetton>;
+    let launchJetton: SandboxContract<JettonMinter>;
+    let supplyJetton: SandboxContract<JettonMinter>;
     let supplyDictionary: Dictionary<number, Supply> = Dictionary.empty();
     const ZERO_ADDRESS = Address.parse('UQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAJKZ');
     
@@ -31,12 +31,12 @@ describe('OTC without supply', () => {
         poc = await blockchain.treasury('poc');
 
         supplyJetton = blockchain.openContract(
-            await MyJetton.fromInit(deployer.address, beginCell().endCell(), 10000000000000000000000000000n),
+            await JettonMinter.fromInit(10000000000000000000000000000n, deployer.address, beginCell().endCell(), true),
         );
         
 
         launchJetton = blockchain.openContract(
-            await MyJetton.fromInit(deployer.address, beginCell().endCell(), 100000000000000000000000000n),
+            await JettonMinter.fromInit(100000000000000000000000000n, deployer.address, beginCell().endCell(), true),
         );
         const mintResult = await launchJetton.send(
             deployer.getSender(),
@@ -45,8 +45,17 @@ describe('OTC without supply', () => {
             },
             {
                 $$type: 'Mint',
-                amount: OUTPUT_MIN_AMOUNT, // Mint 100 tokens
+                mintMessage: {
+                    $$type: 'JettonTransferInternal',
+                    queryId: 0n,
+                    amount: OUTPUT_MIN_AMOUNT,
+                    sender: deployer.address,
+                    responseDestination: null,
+                    forwardTonAmount: 0n,
+                    forwardPayload: beginCell().storeUint(0, 32).endCell().asSlice(),
+                },
                 receiver: deployer.address,
+                queryId: 0n,
             },
         );
         const mintResult2 = await supplyJetton.send(
@@ -56,8 +65,17 @@ describe('OTC without supply', () => {
             },
             {
                 $$type: 'Mint',
-                amount: OUTPUT_MIN_AMOUNT * 10n, // Mint 100 tokens
+                mintMessage: {
+                    $$type: 'JettonTransferInternal',
+                    queryId: 0n,
+                    amount: OUTPUT_MIN_AMOUNT * 10n,
+                    sender: deployer.address,
+                    responseDestination: null,
+                    forwardTonAmount: 0n,
+                    forwardPayload: beginCell().storeUint(0, 32).endCell().asSlice(),
+                },
                 receiver: deployer.address,
+                queryId: 0n,
             },
         );
         await verifyTransactions(mintResult2.transactions, deployer.address);
@@ -145,21 +163,21 @@ describe('OTC without supply', () => {
 
     it('should successfully deposit output token', async () => {
 
-        const farmerJettonWallet = blockchain.openContract(await JettonDefaultWallet.fromInit(deployer.address, launchJetton.address));
+        const farmerJettonWallet = blockchain.openContract(await JettonWallet.fromInit(deployer.address, launchJetton.address, 0n));
         const sendResult = await farmerJettonWallet.send(
             deployer.getSender(),
             {
                 value: toNano('0.1'),
             },
             {
-                $$type: 'TokenTransfer',
-                query_id: 1n,
-                custom_payload: null,
-                forward_ton_amount: toNano('0'),
-                forward_payload: beginCell().asSlice(),
+                $$type: 'JettonTransfer',
+                queryId: 1n,
+                customPayload: null,
+                forwardTonAmount: toNano('0'),
+                forwardPayload: beginCell().storeUint(0, 32).endCell().asSlice(),
                 amount: OUTPUT_MIN_AMOUNT,
-                recipient: otc.address,
-                response_destination: deployer.address,
+                destination: otc.address,
+                responseDestination: deployer.address,
             },
         );
        await verifyTransactions(sendResult.transactions, deployer.address);
@@ -177,22 +195,22 @@ describe('OTC without supply', () => {
     });
 
     it('should successfully buyback output token', async () => {
-        const launchJettonWallet = blockchain.openContract(await JettonDefaultWallet.fromInit(deployer.address, launchJetton.address));
-        const supplyJettonWallet = blockchain.openContract(await JettonDefaultWallet.fromInit(deployer.address, supplyJetton.address));
+        const launchJettonWallet = blockchain.openContract(await JettonWallet.fromInit(deployer.address, launchJetton.address, 0n));
+        const supplyJettonWallet = blockchain.openContract(await JettonWallet.fromInit(deployer.address, supplyJetton.address, 0n));
         const sendResult = await launchJettonWallet.send(
             deployer.getSender(),
             {
                 value: toNano('0.1'),
             },
             {
-                $$type: 'TokenTransfer',
-                query_id: 1n,
-                custom_payload: null,
-                forward_ton_amount: toNano('0'),
-                forward_payload: beginCell().asSlice(),
+                $$type: 'JettonTransfer',
+                queryId: 1n,
+                customPayload: null,
+                forwardTonAmount: toNano('0'),
+                forwardPayload: beginCell().storeUint(0, 32).endCell().asSlice(),
                 amount: OUTPUT_MIN_AMOUNT,
-                recipient: otc.address,
-                response_destination: deployer.address,
+                destination: otc.address,
+                responseDestination: deployer.address,
             },
         );
        await verifyTransactions(sendResult.transactions, deployer.address);
@@ -244,8 +262,17 @@ describe('OTC without supply', () => {
             },
             {
                 $$type: 'Mint',
-                amount: OUTPUT_MIN_AMOUNT / 2n,
+                mintMessage: {
+                    $$type: 'JettonTransferInternal',
+                    queryId: 0n,
+                    amount: OUTPUT_MIN_AMOUNT / 2n,
+                    sender: deployer.address,
+                    responseDestination: null,
+                    forwardTonAmount: 0n,
+                    forwardPayload: beginCell().storeUint(0, 32).endCell().asSlice(),
+                },
                 receiver: deployer.address,
+                queryId: 0n,
             },
         );
         await verifyTransactions(mintForAdmin.transactions, deployer.address);
@@ -259,14 +286,14 @@ describe('OTC without supply', () => {
                 value: toNano('0.2'),
             },
             {
-                $$type: 'TokenTransfer',
-                query_id: 2n,
-                custom_payload: null,
-                forward_ton_amount: toNano('0.1'),
-                forward_payload: beginCell().asSlice(),
+                $$type: 'JettonTransfer',
+                queryId: 2n,
+                customPayload: null,
+                forwardTonAmount: toNano('0.1'),
+                forwardPayload: beginCell().storeUint(0, 32).endCell().asSlice(),
                 amount: OUTPUT_MIN_AMOUNT * 10n / 2n,
-                recipient: otc.address,
-                response_destination: deployer.address,
+                destination: otc.address,
+                responseDestination: deployer.address,
             },
         );
 
@@ -281,22 +308,22 @@ describe('OTC without supply', () => {
     });
 
     it('should fail when admin tries to vote "no" in propose farm account', async () => {
-        const launchJettonWallet = blockchain.openContract(await JettonDefaultWallet.fromInit(deployer.address, launchJetton.address));
-        const supplyJettonWallet = blockchain.openContract(await JettonDefaultWallet.fromInit(deployer.address, supplyJetton.address));
+        const launchJettonWallet = blockchain.openContract(await JettonWallet.fromInit(deployer.address, launchJetton.address, 0n));
+        const supplyJettonWallet = blockchain.openContract(await JettonWallet.fromInit(deployer.address, supplyJetton.address, 0n));
         const sendResult = await launchJettonWallet.send(
             deployer.getSender(),
             {
                 value: toNano('0.1'),
             },
             {
-                $$type: 'TokenTransfer',
-                query_id: 1n,
-                custom_payload: null,
-                forward_ton_amount: toNano('0'),
-                forward_payload: beginCell().asSlice(),
+                $$type: 'JettonTransfer',
+                queryId: 1n,
+                customPayload: null,
+                forwardTonAmount: toNano('0'),
+                forwardPayload: beginCell().storeUint(0, 32).endCell().asSlice(),
                 amount: OUTPUT_MIN_AMOUNT,
-                recipient: otc.address,
-                response_destination: deployer.address,
+                destination: otc.address,
+                responseDestination: deployer.address,
             },
         );
        await verifyTransactions(sendResult.transactions, deployer.address);
@@ -350,22 +377,22 @@ describe('OTC without supply', () => {
 
 
     it('should fail when admin tries to vote "yes" in propose farm account', async () => {
-        const launchJettonWallet = blockchain.openContract(await JettonDefaultWallet.fromInit(deployer.address, launchJetton.address));
-        const supplyJettonWallet = blockchain.openContract(await JettonDefaultWallet.fromInit(deployer.address, supplyJetton.address));
+        const launchJettonWallet = blockchain.openContract(await JettonWallet.fromInit(deployer.address, launchJetton.address, 0n));
+        const supplyJettonWallet = blockchain.openContract(await JettonWallet.fromInit(deployer.address, supplyJetton.address, 0n));
         const sendResult = await launchJettonWallet.send(
             deployer.getSender(),
             {
                 value: toNano('0.1'),
             },
             {
-                $$type: 'TokenTransfer',
-                query_id: 1n,
-                custom_payload: null,
-                forward_ton_amount: toNano('0'),
-                forward_payload: beginCell().asSlice(),
+                $$type: 'JettonTransfer',
+                queryId: 1n,
+                customPayload: null,
+                forwardTonAmount: toNano('0'),
+                forwardPayload: beginCell().storeUint(0, 32).endCell().asSlice(),
                 amount: OUTPUT_MIN_AMOUNT,
-                recipient: otc.address,
-                response_destination: deployer.address,
+                destination: otc.address,
+                responseDestination: deployer.address,
             },
         );
        await verifyTransactions(sendResult.transactions, deployer.address);
@@ -419,22 +446,22 @@ describe('OTC without supply', () => {
 
 
     it('should fail when client tries to propose farm account', async () => {
-        const launchJettonWallet = blockchain.openContract(await JettonDefaultWallet.fromInit(deployer.address, launchJetton.address));
-        const supplyJettonWallet = blockchain.openContract(await JettonDefaultWallet.fromInit(deployer.address, supplyJetton.address));
+        const launchJettonWallet = blockchain.openContract(await JettonWallet.fromInit(deployer.address, launchJetton.address, 0n));
+        const supplyJettonWallet = blockchain.openContract(await JettonWallet.fromInit(deployer.address, supplyJetton.address, 0n));
         const sendResult = await launchJettonWallet.send(
             deployer.getSender(),
             {
                 value: toNano('0.1'),
             },
             {
-                $$type: 'TokenTransfer',
-                query_id: 1n,
-                custom_payload: null,
-                forward_ton_amount: toNano('0'),
-                forward_payload: beginCell().asSlice(),
+                $$type: 'JettonTransfer',
+                queryId: 1n,
+                customPayload: null,
+                forwardTonAmount: toNano('0'),
+                forwardPayload: beginCell().storeUint(0, 32).endCell().asSlice(),
                 amount: OUTPUT_MIN_AMOUNT,
-                recipient: otc.address,
-                response_destination: deployer.address,
+                destination: otc.address,
+                responseDestination: deployer.address,
             },
         );
        await verifyTransactions(sendResult.transactions, deployer.address);
@@ -477,21 +504,21 @@ describe('OTC without supply', () => {
     });
 
     it('should allow client to change vote from "no" to "yes"', async () => {
-        const launchJettonWallet = blockchain.openContract(await JettonDefaultWallet.fromInit(deployer.address, launchJetton.address));
+        const launchJettonWallet = blockchain.openContract(await JettonWallet.fromInit(deployer.address, launchJetton.address, 0n));
         const sendResult = await launchJettonWallet.send(
             deployer.getSender(),
             {
                 value: toNano('0.1'),
             },
             {
-                $$type: 'TokenTransfer',
-                query_id: 1n,
-                custom_payload: null,
-                forward_ton_amount: toNano('0'),
-                forward_payload: beginCell().asSlice(),
+                $$type: 'JettonTransfer',
+                queryId: 1n,
+                customPayload: null,
+                forwardTonAmount: toNano('0'),
+                forwardPayload: beginCell().storeUint(0, 32).endCell().asSlice(),
                 amount: OUTPUT_MIN_AMOUNT,
-                recipient: otc.address,
-                response_destination: deployer.address,
+                destination: otc.address,
+                responseDestination: deployer.address,
             },
         );
        await verifyTransactions(sendResult.transactions, deployer.address);
@@ -553,21 +580,21 @@ describe('OTC without supply', () => {
     });
 
     it('should not allow client to change vote from "yes" to "no"', async () => {
-        const launchJettonWallet = blockchain.openContract(await JettonDefaultWallet.fromInit(deployer.address, launchJetton.address));
+        const launchJettonWallet = blockchain.openContract(await JettonWallet.fromInit(deployer.address, launchJetton.address, 0n));
         const sendResult = await launchJettonWallet.send(
             deployer.getSender(),
             {
                 value: toNano('0.1'),
             },
             {
-                $$type: 'TokenTransfer',
-                query_id: 1n,
-                custom_payload: null,
-                forward_ton_amount: toNano('0'),
-                forward_payload: beginCell().asSlice(),
+                $$type: 'JettonTransfer',
+                queryId: 1n,
+                customPayload: null,
+                forwardTonAmount: toNano('0'),
+                forwardPayload: beginCell().storeUint(0, 32).endCell().asSlice(),
                 amount: OUTPUT_MIN_AMOUNT,
-                recipient: otc.address,
-                response_destination: deployer.address,
+                destination: otc.address,
+                responseDestination: deployer.address,
             },
         );
        await verifyTransactions(sendResult.transactions, deployer.address);

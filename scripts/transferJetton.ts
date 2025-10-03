@@ -1,5 +1,6 @@
 import { toNano, Address, beginCell, TupleBuilder, ContractProvider } from '@ton/core';
-import { MyJetton, TokenTransfer, storeTokenTransfer } from '../build/MyJetton/MyJetton_MyJetton';
+import { JettonMinter } from '../build/JettonMinter/JettonMinter_JettonMinter';
+import { JettonWallet } from '../build/JettonMinter/JettonMinter_JettonWallet';
 import { NetworkProvider } from '@ton/blueprint';
 import { getContractAddress } from './utils/contractAddressManager';
 
@@ -18,7 +19,7 @@ export async function run(provider: NetworkProvider) {
     const network = provider.network() === 'mainnet' ? 'mainnet' : 'testnet';
     
     // Get jetton contract address from deployed contracts
-    const jettonAddress = getContractAddress(network, 'MyJetton_MJT');
+    const jettonAddress = getContractAddress(network, 'JettonMinter_JMT');
     
     if (!jettonAddress) {
         console.error('❌ Jetton contract not found in deployed contracts');
@@ -37,39 +38,36 @@ export async function run(provider: NetworkProvider) {
     console.log('Forward TON Amount:', FORWARD_TON_AMOUNT.toString());
 
     // Open jetton contract to get wallet address
-    const myJetton = provider.open(MyJetton.fromAddress(Address.parse(jettonAddress)));
+    const jettonMinter = provider.open(JettonMinter.fromAddress(Address.parse(jettonAddress)));
     
     // Get sender's wallet address using contract provider
-    const senderWalletAddress = await myJetton.getGetWalletAddress(provider.sender().address!);
+    const senderWalletAddress = await jettonMinter.getGetWalletAddress(provider.sender().address!);
     console.log('Sender Wallet Address:', senderWalletAddress.toString());
 
 
-    // Create TokenTransfer message using the contract's type
-    const transferMessage: TokenTransfer = {
-        $$type: 'TokenTransfer',
-        query_id: QUERY_ID,
-        amount: TRANSFER_AMOUNT,
-        recipient: RECIPIENT_ADDRESS,
-        response_destination: provider.sender().address!,
-        custom_payload: null,
-        forward_ton_amount: FORWARD_TON_AMOUNT,
-        forward_payload: beginCell().endCell().asSlice(), // Empty slice
-    };
+    // Open sender's jetton wallet
+    const senderWallet = provider.open(JettonWallet.fromAddress(senderWalletAddress));
 
-    // Create the transfer message body using the contract's serializer
-    const transferBody = beginCell()
-        .store(storeTokenTransfer(transferMessage))
-        .endCell();
-
-    // Send transfer transaction to sender's jetton wallet
-    await provider.sender().send({
-        to: senderWalletAddress,
-        value: toNano('0.1'), // Transaction fee
-        body: transferBody,
-    });
+    // Send transfer transaction using JettonWallet API
+    await senderWallet.send(
+        provider.sender(),
+        {
+            value: toNano('0.1'), // Transaction fee
+        },
+        {
+            $$type: 'JettonTransfer',
+            queryId: QUERY_ID,
+            amount: TRANSFER_AMOUNT,
+            destination: RECIPIENT_ADDRESS,
+            responseDestination: provider.sender().address!,
+            customPayload: null,
+            forwardTonAmount: FORWARD_TON_AMOUNT,
+            forwardPayload: beginCell().endCell().asSlice(),
+        }
+    );
 
     console.log('📤 Transfer transaction sent');
     console.log('✅ Jetton transfer completed!');
-    console.log(`Transferred ${TRANSFER_AMOUNT.toString()} tokens from ${senderWalletAddress.toString()} to ${recipientWalletAddress.toString()}`);
+    console.log(`Transferred ${TRANSFER_AMOUNT.toString()} tokens from ${senderWalletAddress.toString()} to ${RECIPIENT_ADDRESS.toString()}`);
 }
 

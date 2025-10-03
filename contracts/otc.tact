@@ -241,7 +241,7 @@ contract OTC {
                 amount:  msg.amount,
                 recipient: self.client,
                 forward_ton_amount: 0,
-                forward_payload: emptySlice(),
+                forward_payload: beginCell().storeUint(0, 1).endCell().asSlice(),
             }.toCell(),
         });
     }
@@ -264,7 +264,7 @@ contract OTC {
                 amount:  msg.amount,
                 recipient: self.client,
                 forward_ton_amount: 0,
-                forward_payload: emptySlice(),
+                forward_payload: beginCell().storeUint(0, 1).endCell().asSlice(),
             }.toCell(),
         });
     }
@@ -301,7 +301,7 @@ contract OTC {
                         amount: outputAmount,
                         recipient: self.admin,
                         forward_ton_amount: 0,
-                        forward_payload: emptySlice(),
+                        forward_payload: beginCell().storeUint(0, 1).endCell().asSlice(),
                     }.toCell(),
                 });
             }
@@ -394,7 +394,7 @@ contract OTC {
                 amount: outputAmount,
                 recipient: myAddress(),
                 forward_ton_amount: 0,
-                forward_payload: emptySlice(),
+                forward_payload: beginCell().storeUint(0, 1).endCell().asSlice(),
             }.toCell(),
         });
 
@@ -442,7 +442,7 @@ contract OTC {
                     amount: currentSupply.input,
                     recipient: self.admin,
                     forward_ton_amount: 0,
-                    forward_payload: emptySlice(),
+                    forward_payload: beginCell().storeUint(0, 1).endCell().asSlice(),
                 }.toCell(),
             });
         }

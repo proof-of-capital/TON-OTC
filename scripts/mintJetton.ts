@@ -1,5 +1,5 @@
-import { toNano, Address } from '@ton/core';
-import { MyJetton } from '../build/MyJetton/MyJetton_MyJetton';
+import { toNano, Address, beginCell } from '@ton/core';
+import { JettonMinter } from '../build/JettonMinter/JettonMinter_JettonMinter';
 import { NetworkProvider } from '@ton/blueprint';
 import { getContractAddress } from './utils/contractAddressManager';
 
@@ -12,7 +12,7 @@ export async function run(provider: NetworkProvider) {
     const network = provider.network() === 'mainnet' ? 'mainnet' : 'testnet';
     
     // Get jetton contract address from deployed contracts
-    const jettonAddress = getContractAddress(network, 'MyJetton_MJT');
+    const jettonAddress = getContractAddress(network, 'JettonMinter_JMT');
     
     if (!jettonAddress) {
         console.error('❌ Jetton contract not found in deployed contracts');
@@ -30,18 +30,27 @@ export async function run(provider: NetworkProvider) {
     console.log('Receiver:', RECEIVER_ADDRESS.toString());
 
     // Open jetton contract
-    const myJetton = provider.open(MyJetton.fromAddress(Address.parse(jettonAddress)));
+    const jettonMinter = provider.open(JettonMinter.fromAddress(Address.parse(jettonAddress)));
 
     // Send mint transaction
-    await myJetton.send(
+    await jettonMinter.send(
         provider.sender(),
         {
             value: toNano('0.1'), // Transaction fee
         },
         {
             $$type: 'Mint',
-            amount: MINT_AMOUNT,
+            mintMessage: {
+                $$type: 'JettonTransferInternal',
+                queryId: 0n,
+                amount: MINT_AMOUNT,
+                sender: provider.sender().address!,
+                responseDestination: null,
+                forwardTonAmount: 0n,
+                forwardPayload: beginCell().storeUint(0, 32).endCell().asSlice(),
+            },
             receiver: RECEIVER_ADDRESS,
+            queryId: 0n,
         }
     );
 
@@ -56,7 +65,7 @@ export async function runPublicMint(provider: NetworkProvider) {
     const network = provider.network() === 'mainnet' ? 'mainnet' : 'testnet';
     
     // Get jetton contract address from deployed contracts
-    const jettonAddress = getContractAddress(network, 'MyJetton_MJT');
+    const jettonAddress = getContractAddress(network, 'JettonMinter_JMT');
     
     if (!jettonAddress) {
         console.error('❌ Jetton contract not found in deployed contracts');
@@ -69,15 +78,28 @@ export async function runPublicMint(provider: NetworkProvider) {
     console.log('Mint Amount: 100 tokens');
 
     // Open jetton contract
-    const myJetton = provider.open(MyJetton.fromAddress(Address.parse(jettonAddress)));
+    const jettonMinter = provider.open(JettonMinter.fromAddress(Address.parse(jettonAddress)));
 
     // Send public mint transaction
-    await myJetton.send(
+    await jettonMinter.send(
         provider.sender(),
         {
             value: toNano('0.1'), // Transaction fee
         },
-        "Mint: 100"
+        {
+            $$type: 'Mint',
+            mintMessage: {
+                $$type: 'JettonTransferInternal',
+                queryId: 0n,
+                amount: toNano('100'),
+                sender: provider.sender().address!,
+                responseDestination: null,
+                forwardTonAmount: 0n,
+                forwardPayload: beginCell().storeUint(0, 32).endCell().asSlice(),
+            },
+            receiver: provider.sender().address!,
+            queryId: 0n,
+        }
     );
 
     console.log('📤 Public mint transaction sent');
