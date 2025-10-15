@@ -392,7 +392,7 @@ contract OTC {
             body: TokenTransfer {
                 query_id: msg.queryId,
                 amount: outputAmount,
-                recipient: myAddress(),
+                recipient: self.admin,
                 forward_ton_amount: 0,
                 forward_payload: beginCell().storeUint(0, 1).endCell().asSlice(),
             }.toCell(),
