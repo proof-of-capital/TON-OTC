@@ -4,7 +4,7 @@ import { NetworkProvider } from '@ton/blueprint';
 import { addContractAddress } from './utils/contractAddressManager';
 
 // Define meaningful constants for OTC initialization
-const OTC_ID = 2n;
+const OTC_ID = 6n;
 const PRICE_TO_REFUND = toNano('0.0000055'); // 0.1 TON for refund
 
 
@@ -22,7 +22,7 @@ const SUPPLY_DATA = [
 
 // Address constants - using zero address as placeholder
 // You should replace these with actual addresses before deployment
-const SUPPLY_JETTON_ADDRESS = Address.parse('EQCxE6mUtQJKFnGfaROTKOt1lZbDiiX1kCixRv7Nw2Id_sDs'); // Zero address as placeholder
+const SUPPLY_JETTON_ADDRESS = Address.parse('UQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAJKZ'); // Zero address as placeholder
 const LAUNCH_JETTON_ADDRESS = Address.parse('EQBp6FAkDdHD_lLKUBI-J-Et5zQeyJlixc6f3iKHBie85Fd-'); // Zero address as placeholder
 const DEPLOYER_ADDRESS = Address.parse('EQBWOZUkRmnEf19c7KKwgY4q7FVjqTtOA19_1-97IiuU1dI9'); // Zero address as placeholder
 const CLIENT_ADDRESS = Address.parse('UQCzRubciSKFgpT9Oa9CBpOit-twuSI2IczOt0rgx9MEkimT'); // Zero address as placeholder
@@ -34,14 +34,14 @@ export async function run(provider: NetworkProvider) {
     // Create supply dictionary with proper Supply structure using dictValueParserSupply
     const supplyDictionary = Dictionary.empty(Dictionary.Keys.Uint(32), dictValueParserSupply());
 
-    // Create Supply objects array for the OTC contract
-    const supplies: Supply[] = SUPPLY_DATA.map(data => ({
-        $$type: 'Supply' as const,
-        input: data.input,
-        output: data.output,
-    }));
+    // // Create Supply objects array for the OTC contract
+    // const supplies: Supply[] = SUPPLY_DATA.map(data => ({
+    //     $$type: 'Supply' as const,
+    //     input: data.input,
+    //     output: data.output,
+    // }));
 
-    // const supplies: Supply[] = [];
+    const supplies: Supply[] = [];
 
     // Add supplies to dictionary with their respective indices
     supplies.forEach((supply, index) => {
@@ -49,10 +49,10 @@ export async function run(provider: NetworkProvider) {
     });
 
     // // Calculate totals from array
-    const totalOutputAmount = supplies.reduce((sum, supply) => sum + supply.output, 0n);
-    const totalInputAmount = supplies.reduce((sum, supply) => sum + supply.input, 0n);
-    // const totalInputAmount = toNano('0');
-    // const totalOutputAmount = toNano('10');
+    // const totalOutputAmount = supplies.reduce((sum, supply) => sum + supply.output, 0n);
+    // const totalInputAmount = supplies.reduce((sum, supply) => sum + supply.input, 0n);
+    const totalInputAmount = toNano('0');
+    const totalOutputAmount = toNano('10');
 
 
 
@@ -67,7 +67,7 @@ export async function run(provider: NetworkProvider) {
         PRICE_TO_REFUND, // Price for refund operations
         totalOutputAmount, // Total output amount available
         totalInputAmount, // Total input amount required
-        true, // Contract is active
+        false, // Contract is active
     ));
 
     // Send deployment transaction

@@ -1,21 +1,21 @@
 import { toNano, Address } from '@ton/core';
-import { OTC, BuybackLaunchJetton } from '../../build/OTC/OTC_OTC';
+import { OTC, WithdrawInput } from '../../build/OTC/OTC_OTC';
 import { NetworkProvider } from '@ton/blueprint';
 import { getContractAddress } from '../utils/contractAddressManager';
 
 // Configuration constants
-const OTC_ID = 6; // OTC contract ID
+const OTC_ID = 1; // OTC contract ID
 const QUERY_ID = 12345; // Query ID for the transaction
-const BUYBACK_AMOUNT = toNano('0.000045'); // Amount of TON to use for buyback
+const WITHDRAW_AMOUNT = toNano('100'); // Amount of input tokens to withdraw
 
 export async function run(provider: NetworkProvider) {
     // Determine network type
     const network = provider.network() === 'mainnet' ? 'mainnet' : 'testnet';
-
+    
     // Get OTC contract address from deployed contracts
     const contractName = `OTC_${OTC_ID}`;
     const otcAddress = getContractAddress(network, contractName);
-
+    
     if (!otcAddress) {
         console.error('❌ OTC contract not found in deployed contracts');
         console.log('Available contracts:');
@@ -25,36 +25,33 @@ export async function run(provider: NetworkProvider) {
         return;
     }
 
-    console.log('🔄 Starting launch jetton buyback...');
+    console.log('💸 Starting input token withdrawal...');
     console.log('Network:', network);
     console.log('OTC Address:', otcAddress);
     console.log('Query ID:', QUERY_ID);
-    console.log('Buyback Amount:', BUYBACK_AMOUNT.toString());
-    console.log('⚠️  Only admin can perform buyback');
-    console.log('⚠️  This only works for TON inputs (inputMasterToken must be ZERO_ADDRESS)');
-
-    // Create buyback message
-    const buybackMessage: BuybackLaunchJetton = {
-        $$type: 'BuybackLaunchJetton' as const,
-        queryId: BigInt(QUERY_ID),
-        amount: BUYBACK_AMOUNT,
-    };
+    console.log('Withdraw Amount:', WITHDRAW_AMOUNT.toString());
+    console.log('⚠️  Only client can withdraw input tokens');
 
     // Open OTC contract
     const otc = provider.open(OTC.fromAddress(Address.parse(otcAddress)));
 
-    // Send buyback transaction
+    // Create withdraw input message
+    const withdrawMessage: WithdrawInput = {
+        $$type: 'WithdrawInput' as const,
+        queryId: BigInt(QUERY_ID),
+        amount: WITHDRAW_AMOUNT,
+    };
+
+    // Send withdraw input transaction
     await otc.send(
         provider.sender(),
         {
-            value: BUYBACK_AMOUNT + toNano('0.15'), // Buyback amount + transaction fee
+            value: toNano('0.1'), // Transaction fee
         },
-        buybackMessage
+        withdrawMessage
     );
 
-    console.log('📤 Buyback transaction sent');
-    console.log('✅ Launch jetton buyback completed!');
-    console.log(`Used ${BUYBACK_AMOUNT.toString()} TON to buyback launch jetton`);
-    console.log('Contract state changed to CANCELED');
-    console.log('Output tokens were sent to admin address');
+    console.log('📤 Withdraw input transaction sent');
+    console.log('✅ Input token withdrawal completed!');
+    console.log(`Withdrew ${WITHDRAW_AMOUNT.toString()} input tokens to client address`);
 }

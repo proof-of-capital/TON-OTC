@@ -4,9 +4,9 @@ import { NetworkProvider } from '@ton/blueprint';
 import { getContractAddress } from '../utils/contractAddressManager';
 
 // Configuration constants
-const OTC_ID = 6; // OTC contract ID
+const OTC_ID = 5; // OTC contract ID
 const QUERY_ID = 12345; // Query ID for the transaction
-const BUYBACK_AMOUNT = toNano('0.000045'); // Amount of TON to use for buyback
+const BUYBACK_AMOUNT = toNano('0.00001'); // Amount of TON to use for buyback
 
 export async function run(provider: NetworkProvider) {
     // Determine network type
@@ -47,7 +47,7 @@ export async function run(provider: NetworkProvider) {
     await otc.send(
         provider.sender(),
         {
-            value: BUYBACK_AMOUNT + toNano('0.15'), // Buyback amount + transaction fee
+            value: BUYBACK_AMOUNT + toNano('0.12'), // Buyback amount + transaction fee
         },
         buybackMessage
     );

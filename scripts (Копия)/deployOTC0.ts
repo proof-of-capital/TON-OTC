@@ -5,7 +5,7 @@ import { addContractAddress } from './utils/contractAddressManager';
 
 // Define meaningful constants for OTC initialization
 const OTC_ID = 2n;
-const PRICE_TO_REFUND = toNano('0.0000055'); // 0.1 TON for refund
+const PRICE_TO_REFUND = toNano('0.000055'); // 0.1 TON for refund
 
 
 // Supply constants for the OTC contract

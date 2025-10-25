@@ -1,13 +1,13 @@
-import { toNano, Address, beginCell, TupleBuilder, ContractProvider } from '@ton/core';
+import { toNano, Address, beginCell, TupleBuilder, ContractProvider, comment } from '@ton/core';
 import { JettonMinter } from '../build/JettonMinter/JettonMinter_JettonMinter';
 import { JettonWallet } from '../build/JettonMinter/JettonMinter_JettonWallet';
 import { NetworkProvider } from '@ton/blueprint';
 import { getContractAddress } from './utils/contractAddressManager';
 
 // Transfer configuration constants
-const TRANSFER_AMOUNT = toNano('100'); // Amount of tokens to transfer (100 tokens)
-const RECIPIENT_ADDRESS = Address.parse('EQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAM9c'); // Recipient address (placeholder)
-const FORWARD_TON_AMOUNT = toNano('0.05'); // TON amount for forward message
+const TRANSFER_AMOUNT = toNano('10'); // Amount of tokens to transfer (100 tokens)
+const RECIPIENT_ADDRESS = Address.parse('EQDMfEreVQAcgGD9yYy3dRs4qh8RhwyBkHEVRONwr4ona39X'); // Recipient address (placeholder)
+const FORWARD_TON_AMOUNT = toNano('0.1'); // TON amount for forward message
 const QUERY_ID = 0n; // Query ID for the transfer
 
 /**
@@ -17,10 +17,10 @@ const QUERY_ID = 0n; // Query ID for the transfer
 export async function run(provider: NetworkProvider) {
     // Determine network type
     const network = provider.network() === 'mainnet' ? 'mainnet' : 'testnet';
-    
+
     // Get jetton contract address from deployed contracts
-    const jettonAddress = getContractAddress(network, 'JettonMinter_JMT');
-    
+    const jettonAddress = 'EQBp6FAkDdHD_lLKUBI-J-Et5zQeyJlixc6f3iKHBie85Fd-';
+
     if (!jettonAddress) {
         console.error('❌ Jetton contract not found in deployed contracts');
         console.log('Available contracts:');
@@ -39,20 +39,25 @@ export async function run(provider: NetworkProvider) {
 
     // Open jetton contract to get wallet address
     const jettonMinter = provider.open(JettonMinter.fromAddress(Address.parse(jettonAddress)));
-    
+
     // Get sender's wallet address using contract provider
     const senderWalletAddress = await jettonMinter.getGetWalletAddress(provider.sender().address!);
     console.log('Sender Wallet Address:', senderWalletAddress.toString());
 
+    const comment = 'Transfer support jetton!';
 
     // Open sender's jetton wallet
     const senderWallet = provider.open(JettonWallet.fromAddress(senderWalletAddress));
+    const forwardPayload = beginCell()
+    .storeUint(0x00000000, 32)
+    .storeStringTail(comment)
+    .endCell();
 
     // Send transfer transaction using JettonWallet API
     await senderWallet.send(
         provider.sender(),
         {
-            value: toNano('0.1'), // Transaction fee
+            value: toNano('0.15'), // Transaction fee
         },
         {
             $$type: 'JettonTransfer',
@@ -62,7 +67,7 @@ export async function run(provider: NetworkProvider) {
             responseDestination: provider.sender().address!,
             customPayload: null,
             forwardTonAmount: FORWARD_TON_AMOUNT,
-            forwardPayload: beginCell().endCell().asSlice(),
+            forwardPayload: forwardPayload.asSlice(),
         }
     );
 
@@ -70,4 +75,3 @@ export async function run(provider: NetworkProvider) {
     console.log('✅ Jetton transfer completed!');
     console.log(`Transferred ${TRANSFER_AMOUNT.toString()} tokens from ${senderWalletAddress.toString()} to ${RECIPIENT_ADDRESS.toString()}`);
 }
-

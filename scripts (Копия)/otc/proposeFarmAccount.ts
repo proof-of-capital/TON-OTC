@@ -4,7 +4,7 @@ import { NetworkProvider } from '@ton/blueprint';
 import { getContractAddress } from '../utils/contractAddressManager';
 
 // Configuration constants
-const OTC_ID = 6; // OTC contract ID
+const OTC_ID = 5; // OTC contract ID
 const QUERY_ID = 12345; // Query ID for the transaction
 const FARM_ACCOUNT_ADDRESS = Address.parse('UQBWOZUkRmnEf19c7KKwgY4q7FVjqTtOA19_1-97IiuU1Y_4'); // Zero address as placeholder
 const SEND_DATA = 'Hello from OTC!'; // Data to send to farm account

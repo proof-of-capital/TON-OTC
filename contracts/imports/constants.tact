@@ -30,8 +30,8 @@ const MIN_ADMIN_SEND_VALUE: Int = ton("0.1");
 
 const PROPOSE_FARM_ACCOUNT_LOCK_PERIOD: Int = 10*24*60*60; // 10 DAYS
 const SUPPLY_LOCK_PERIOD: Int = 10*24*60*60; // 10 days for supply phase (USDT/TON only)
-const TOTAL_LOCK_PERIOD: Int = 75*24*60*60; // 75 days total lock
-const INITIAL_LOCK_PERIOD: Int = 80*24*60*60; // 80 days initial lock
+const TOTAL_LOCK_PERIOD: Int = 65*24*60*60; // 75 days total lock
+const INITIAL_LOCK_PERIOD: Int = 70*24*60*60; // 80 days initial lock
 
 const ZERO_ADDRESS: Address = address("UQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAJKZ");
 
