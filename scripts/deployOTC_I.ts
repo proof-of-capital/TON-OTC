@@ -5,7 +5,7 @@ import { addContractAddress } from './utils/contractAddressManager';
 
 // Define meaningful constants for OTC initialization
 const OTC_ID = 6n;
-const PRICE_TO_REFUND = toNano('0.0000055'); // 0.1 TON for refund
+const PRICE_TO_REFUND = toNano('0.00005'); // 0.1 TON for refund
 
 
 // Supply constants for the OTC contract
@@ -52,7 +52,7 @@ export async function run(provider: NetworkProvider) {
     // const totalOutputAmount = supplies.reduce((sum, supply) => sum + supply.output, 0n);
     // const totalInputAmount = supplies.reduce((sum, supply) => sum + supply.input, 0n);
     const totalInputAmount = toNano('0');
-    const totalOutputAmount = toNano('10');
+    const totalOutputAmount = toNano('1000');
 
 
 
